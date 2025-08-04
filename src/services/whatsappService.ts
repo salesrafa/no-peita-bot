@@ -1,6 +1,8 @@
 import { Client, Message } from 'whatsapp-web.js';
 import { enviroment, allowedContacts } from '../config';
 import { handleMessage } from './scriptApi';
+import { carregarAdmins, isAdmin } from './adminService';
+
 let ultimaQr = "";
 
 const client = new Client({
@@ -13,6 +15,7 @@ const client = new Client({
 
 export function initClient(): void {
   
+  carregarAdmins(); // ✅ carrega admins antes de inicializar
   client.initialize();
 
   client.on('qr', (qr: string) => {
