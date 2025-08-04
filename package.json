@@ -1,0 +1,31 @@
+{
+  "name": "no-peita-bot",
+  "version": "1.0.0",
+  "description": "No Peita Bot - Your bot for your Whatsapp Gym Group",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon",
+    "build": "tsc",
+    "start": "npm install && npm run build && node dist/index.js"
+  },
+  "author": "Rafael Sales",
+  "license": "ISC",
+  "dependencies": {
+    "@types/express": "^5.0.3",
+    "axios": "^1.10.0",
+    "cheerio": "^1.1.0",
+    "dayjs": "^1.11.13",
+    "dotenv": "^17.2.0",
+    "express": "^5.1.0",
+    "lunarphase-js": "^2.0.3",
+    "puppeteer-core": "^24.14.0",
+    "qrcode": "^1.5.4",
+    "whatsapp-web.js": "^1.31.0"
+  },
+  "devDependencies": {
+    "@types/qrcode": "^1.5.5",
+    "nodemon": "^3.1.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}

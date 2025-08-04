@@ -1,0 +1,7 @@
+.wwebjs_auth/
+dist/
+node_modules/
+package-lock.json
+.wwebjs_cache/
+tsconfig.tsbuildinfo
+.env
