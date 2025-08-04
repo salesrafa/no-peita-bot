@@ -3,7 +3,7 @@ import { url } from '../config';
 
 let adminSet = new Set<string>();
 
-export async function carregarAdmins() {
+export async function carregarAdmins(): Promise<void> {
   try {
     const { data } = await axios.get(`${url}?action=getAdmins`);
     adminSet = new Set(data.map((u: any) => String(u.numero)));
@@ -15,4 +15,8 @@ export async function carregarAdmins() {
 
 export function isAdmin(numero: string): boolean {
   return adminSet.has(numero);
+}
+
+export function getAdminsList(): string[] {
+  return Array.from(adminSet);
 }
