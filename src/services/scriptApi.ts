@@ -36,15 +36,15 @@ export async function enviarCacheLuaCheia(ano: number, mes: number, datas: strin
 export async function handleMessage(msg: Message, client: Client, ultimaQr: string): Promise<void> {
   try {
     // 🔍 Etapa 1: Atualizar caches se necessário
-    const pendentes = await precisaAtualizar();
+    // const pendentes = await precisaAtualizar();
 
-    for (const cache of pendentes) {
-      if (cache.cache === 'lua_cheia') {
-        const { ano, mes } = cache;
-        const datas = gerarDatasLuaCheia(ano, mes);
-        await enviarCacheLuaCheia(ano, mes, datas);
-      }
-    }
+    // for (const cache of pendentes) {
+    //   if (cache.cache === 'lua_cheia') {
+    //     const { ano, mes } = cache;
+    //     const datas = gerarDatasLuaCheia(ano, mes);
+    //     await enviarCacheLuaCheia(ano, mes, datas);
+    //   }
+    // }
 
     // 🔄 Etapa 2: Encaminhar mensagem para o Apps Script
     const params = new URLSearchParams();
