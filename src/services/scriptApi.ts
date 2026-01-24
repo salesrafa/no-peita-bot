@@ -55,7 +55,11 @@ export async function handleMessage(msg: Message, client: Client, ultimaQr: stri
 
     const response = await axios.post(url, params, { headers: header });
 
-    await msg.reply(response.data);
+    console.log(response.data);
+    (client as any).sendSeen = async () => {};
+
+    await client.sendMessage(msg.from, response.data);
+
   } catch (err) {
     console.error('Erro ao lidar com mensagem:', err);
     await msg.reply('⚠️ Ocorreu um erro ao processar seu comando.');

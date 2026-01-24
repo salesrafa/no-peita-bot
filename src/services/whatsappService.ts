@@ -14,7 +14,19 @@ const client = new Client({
 });
 
 export function initClient(): void {
-  
+
+  client.on('ready', async () => {
+  console.log('🤖 Bot pronto');
+
+  await client.pupPage?.evaluate(() => {
+    const w = window as any;
+
+    if (w.WWebJS?.sendSeen) {
+      w.WWebJS.sendSeen = async () => {};
+    }
+  });
+});
+
   carregarAdmins(); // ✅ carrega admins antes de inicializar
   client.initialize();
 
