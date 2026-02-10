@@ -55,7 +55,6 @@ export async function handleMessage(msg: Message, client: Client, ultimaQr: stri
 
     const response = await axios.post(url, params, { headers: header });
 
-    console.log(response.data);
     (client as any).sendSeen = async () => {};
 
     await client.sendMessage(msg.from, response.data);
