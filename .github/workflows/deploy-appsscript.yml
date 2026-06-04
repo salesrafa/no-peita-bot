@@ -52,5 +52,9 @@ jobs:
       - name: Redeploy (mantém a mesma URL)
         working-directory: apps-script
         env:
-          DEPLOYMENT_ID: REDACTED_DEPLOYMENT_ID
-        run: clasp update-deployment -d "deploy via github actions (${GITHUB_SHA::7})" "$DEPLOYMENT_ID"
+          DEPLOYMENT_ID: ${{ vars.DEPLOYMENT_ID }}
+        run: |
+          if [ -z "$DEPLOYMENT_ID" ]; then
+            echo "::error::Variable DEPLOYMENT_ID não configurada (Settings → Secrets and variables → Actions → Variables)." && exit 1
+          fi
+          clasp update-deployment -d "deploy via github actions (${GITHUB_SHA::7})" "$DEPLOYMENT_ID"
