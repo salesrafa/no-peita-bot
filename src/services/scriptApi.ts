@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { Client, Message } from 'whatsapp-web.js';
 import { gerarDatasLuaCheia } from './cacheService';
-import { url, header } from '../config';
+import { url, header, scriptAuthToken } from '../config';
 
 interface CachePendente {
   cache: string;
@@ -11,7 +11,9 @@ interface CachePendente {
 
 export async function precisaAtualizar(): Promise<CachePendente[]> {
   try {
-    const response = await axios.get<CachePendente[]>(`${url}?action=precisaAtualizarCaches`);
+    const response = await axios.get<CachePendente[]>(
+      `${url}?action=precisaAtualizarCaches&token=${encodeURIComponent(scriptAuthToken)}`
+    );
     return response.data;
   } catch (error) {
     console.error('Erro ao verificar caches pendentes:', error);
@@ -21,6 +23,7 @@ export async function precisaAtualizar(): Promise<CachePendente[]> {
 
 export async function enviarCacheLuaCheia(ano: number, mes: number, datas: string[]): Promise<void> {
   const params = new URLSearchParams();
+  params.append('token', scriptAuthToken);
   params.append('Body', 'atualizaLuaCheia');
   params.append('Ano', String(ano));
   params.append('Mes', String(mes));
@@ -50,6 +53,7 @@ export async function handleMessage(msg: Message, client: Client, ultimaQr: stri
     const params = new URLSearchParams();
     const sender = `whatsapp:+${(msg.author || msg.from).split('@')[0]}`;
 
+    params.append('token', scriptAuthToken);
     params.append('Body', msg.body);
     params.append('From', sender);
 
