@@ -32,6 +32,9 @@ function doPost(e) {
     case '/pontuar':
       responseText = handlePontuar(e);
       break;
+    case '/teste':
+      responseText = 'teste realizado com sucesso';
+      break;
     case '/anografico':
       responseText = handleRankingAnoGrafico(e);
       break;
