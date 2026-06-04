@@ -1,4 +1,17 @@
+// Confere o token compartilhado (Script Property AUTH_TOKEN) contra o
+// parametro 'token' da requisicao. Como o web app e ANYONE_ANONYMOUS, e
+// esse token que impede acesso anonimo mesmo com a URL publica.
+function autorizado(e) {
+  const esperado = PropertiesService.getScriptProperties().getProperty('AUTH_TOKEN');
+  const recebido = (e && e.parameter && e.parameter.token) || '';
+  return Boolean(esperado) && recebido === esperado;
+}
+
 function doGet(e) {
+  if (!autorizado(e)) {
+    return ContentService.createTextOutput('unauthorized');
+  }
+
   const action = e.parameter.action;
 
   switch (action) {
@@ -14,6 +27,9 @@ function doGet(e) {
 }
 
 function doPost(e) {
+  if (!autorizado(e)) {
+    return ContentService.createTextOutput('unauthorized');
+  }
 
   let responseText = '';
   const mensagem = (e.parameter.Body || "").trim();
