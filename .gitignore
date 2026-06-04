@@ -5,3 +5,7 @@ package-lock.json
 .wwebjs_cache/
 tsconfig.tsbuildinfo
 .env
+
+# clasp / Apps Script credentials — NUNCA commitar
+.clasprc.json
+**/.clasprc.json
