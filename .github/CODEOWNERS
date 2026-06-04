@@ -1,0 +1,4 @@
+# Todo o repositório requer revisão/aprovação do dono.
+# Combinado com "Require review from Code Owners" na proteção da branch main,
+# isso faz com que apenas a aprovação do @salesrafa libere o merge.
+* @salesrafa
