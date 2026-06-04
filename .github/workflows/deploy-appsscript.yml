@@ -44,3 +44,13 @@ jobs:
       - name: Push para o Apps Script (repo é a fonte da verdade)
         working-directory: apps-script
         run: clasp push -f
+
+      # Re-publica SEMPRE a mesma implantação (mesmo deployment ID = mesma URL).
+      # Sem isso, o clasp push só atualiza o HEAD e a URL /exec continua
+      # servindo o código antigo. Como o ID é fixo, a env URL do Railway
+      # nunca precisa mudar.
+      - name: Redeploy (mantém a mesma URL)
+        working-directory: apps-script
+        env:
+          DEPLOYMENT_ID: REDACTED_DEPLOYMENT_ID
+        run: clasp update-deployment -d "deploy via github actions (${GITHUB_SHA::7})" "$DEPLOYMENT_ID"
