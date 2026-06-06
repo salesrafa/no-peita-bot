@@ -29,8 +29,8 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Install clasp
-        run: npm install -g @google/clasp@3.3.0
+      - name: Install clasp e googleapis
+        run: npm install -g @google/clasp@3.3.0 googleapis
 
       - name: Restaura credenciais do clasp
         env:
@@ -49,6 +49,39 @@ jobs:
       # Sem isso, o clasp push só atualiza o HEAD e a URL /exec continua
       # servindo o código antigo. Como o ID é fixo, a env URL do Railway
       # nunca precisa mudar.
+      - name: Limpa versões antigas (mantém as 50 mais recentes)
+        run: |
+          node - <<'EOF'
+          const { google } = require('googleapis');
+          const fs = require('fs');
+          const path = require('path');
+
+          async function main() {
+            const clasprc = JSON.parse(fs.readFileSync(path.join(process.env.HOME, '.clasprc.json'), 'utf8'));
+            const tokens = clasprc.tokens?.default ?? clasprc.tokens ?? clasprc;
+            const auth = new google.auth.OAuth2(tokens.client_id, tokens.client_secret, 'urn:ietf:wg:oauth:2.0:oob');
+            auth.setCredentials(tokens);
+
+            const script = google.script({ version: 'v1', auth });
+            const scriptId = '14t6AN-Ii2GWjL9V8lNHBKRDoiNDLcI31toQ8DwH_WSsahqTAH_DYrxUh';
+            const KEEP = 50;
+
+            const res = await script.projects.versions.list({ scriptId, pageSize: 200 });
+            const versions = (res.data.versions ?? []).sort((a, b) => a.versionNumber - b.versionNumber);
+            const toDelete = versions.slice(0, Math.max(0, versions.length - KEEP));
+
+            console.log(`Total de versões: ${versions.length}. Deletando ${toDelete.length}.`);
+            for (const v of toDelete) {
+              await script.projects.versions.delete({ scriptId, versionNumber: v.versionNumber });
+              console.log(`Deletada versão ${v.versionNumber}`);
+            }
+          }
+
+          main().catch(e => { console.error('Limpeza falhou (não bloqueante):', e.message); });
+          EOF
+        env:
+          NODE_PATH: /usr/local/lib/node_modules
+
       - name: Redeploy (mantém a mesma URL)
         working-directory: apps-script
         env:
