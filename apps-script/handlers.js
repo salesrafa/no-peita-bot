@@ -455,7 +455,7 @@ function handleEu(e) {
   if (!usuario) {
     return "🚫 Você ainda não está cadastrado. Use: /cadastro Seu Nome";
   }
-  const numeroUsuario = usuario.numero;
+  const idUsuario = usuario.id_whatsapp;
   const treinosSheet = ss.getSheetByName("treinos");
   const agora = new Date();
   const mesAtual = agora.getMonth();
@@ -465,9 +465,9 @@ function handleEu(e) {
 
   const datas = treinos
     .filter(row => {
-      const numeroTreino = row[0];
+      const idTreino = row[0];
       const data = new Date(row[2]);
-      return numeroTreino === numeroUsuario &&
+      return idTreino === idUsuario &&
         data.getMonth() === mesAtual &&
         data.getFullYear() === anoAtual;
     })
