@@ -604,6 +604,159 @@ function handleEu(e) {
   return resposta.trim();
 }
 
+// Meta anual padrão (treinos no ano) quando a pessoa não definiu a sua.
+// Ajustável aqui; cada um pode sobrescrever com /meta N.
+const META_ANUAL_PADRAO = 150;
+
+// /meta        -> mostra o progresso da meta anual (com barra e projeção)
+// /meta 200    -> define a meta anual pessoal do ano corrente (aba "metas")
+function handleMeta(e) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const usuario = getUsuarioPorIdentificador(e.parameter.From || "");
+  if (!usuario) {
+    return "🚫 Você ainda não está cadastrado. Use: /cadastro Seu Nome";
+  }
+
+  const partes = (e.parameter.Body || "").trim().split(/\s+/);
+
+  // /meta N -> define a meta pessoal
+  if (partes.length >= 2) {
+    const nova = parseInt(partes[1], 10);
+    if (isNaN(nova) || nova <= 0) {
+      return "❌ Meta inválida. Informe um número positivo. Ex.: /meta 150";
+    }
+    const ano = new Date().getFullYear();
+    setMetaAnual(usuario.uuid || usuario.id_whatsapp, ano, nova);
+    return `✅ Meta anual de ${ano} definida: *${nova}* treinos.\nUse /meta para ver seu progresso.`;
+  }
+
+  // /meta -> mostra o progresso
+  const agora = new Date();
+  const ano = agora.getFullYear();
+  const metaInfo = getMetaAnual(usuario.uuid || usuario.id_whatsapp, ano);
+  const meta = metaInfo ? metaInfo.valor : META_ANUAL_PADRAO;
+  const herdada = metaInfo && metaInfo.ano < ano; // meta veio de um ano anterior
+  const total = contarTreinosNoAno(usuario.uuid || usuario.id_whatsapp, ano);
+
+  const pct = Math.round((total / meta) * 100);
+  const barra = barraProgresso(total, meta);
+
+  const inicioAno = new Date(ano, 0, 1);
+  const fimAno = new Date(ano, 11, 31, 23, 59, 59, 999);
+  const umDia = 24 * 60 * 60 * 1000;
+  const diaDoAno = Math.max(1, Math.floor((agora - inicioAno) / umDia) + 1);
+  const diasNoAno = Math.round((fimAno - inicioAno) / umDia) + 1;
+  const diasRestantes = Math.max(0, diasNoAno - diaDoAno);
+
+  let resposta = `🎯 *Meta anual ${ano}*\n`;
+  resposta += `👟 ${total} / ${meta} treinos (${pct}%)\n`;
+  resposta += `${barra}\n`;
+  resposta += `📅 Faltam ${diasRestantes} dia${diasRestantes === 1 ? "" : "s"}\n`;
+
+  if (total >= meta) {
+    resposta += `🏆 Meta batida! Bora aumentar? (/meta N)`;
+  } else {
+    const ritmo = total / diaDoAno; // treinos por dia até agora
+    const projetado = Math.round(total + ritmo * diasRestantes);
+    if (projetado >= meta) {
+      resposta += `📈 No ritmo atual você fecha o ano em ~${projetado} — vai bater! 🎉`;
+    } else {
+      const restante = meta - total;
+      const semanas = Math.max(1, diasRestantes / 7);
+      const porSemana = Math.ceil(restante / semanas);
+      resposta += `📉 No ritmo atual fecha em ~${projetado}. ` +
+        `Faltam ${restante} treinos — ~${porSemana}/semana pra alcançar.`;
+    }
+  }
+
+  if (herdada) {
+    resposta += `\n\nℹ️ Meta herdada de ${metaInfo.ano} — defina a de ${ano} com /meta N`;
+  }
+
+  return resposta.trim();
+}
+
+// Conta os dias únicos treinados por um usuário (uuid) em um ano.
+// Dedup por dia é redundante (o bot já limita 1/dia), mas protege contra
+// eventuais duplicatas legadas. Não inclui dados pré-bot (treinos-AB, 2025).
+function contarTreinosNoAno(uuidUsuario, ano) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("treinos");
+  if (!sheet) return 0;
+  const mapas = getMapasIdentidade();
+  const dados = sheet.getDataRange().getValues();
+  const dias = {};
+  for (let i = 1; i < dados.length; i++) {
+    const [col0, nome, dataStr] = dados[i];
+    if ((!col0 && !nome) || !dataStr) continue;
+    if (resolverUuidTreino(col0, nome, mapas) !== uuidUsuario) continue;
+    const d = new Date(dataStr);
+    if (d.getFullYear() !== ano) continue;
+    dias[`${d.getMonth()}-${d.getDate()}`] = true;
+  }
+  return Object.keys(dias).length;
+}
+
+// Barra de progresso textual de 10 blocos (🟩 cheio, ⬜ vazio).
+function barraProgresso(valor, total) {
+  const blocos = 10;
+  const frac = total > 0 ? valor / total : 0;
+  let cheios = Math.round(frac * blocos);
+  if (cheios < 0) cheios = 0;
+  if (cheios > blocos) cheios = blocos;
+  return "🟩".repeat(cheios) + "⬜".repeat(blocos - cheios);
+}
+
+// Aba "metas": uma linha por (uuid, ano). Mantém histórico das metas anuais
+// sem inchar a aba "usuarios" — ano novo só vira linha nova.
+// Colunas: A uuid | B ano | C meta
+function getSheetMetas() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName("metas");
+  if (!sheet) {
+    sheet = ss.insertSheet("metas");
+  }
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(["uuid", "ano", "meta"]);
+  }
+  return sheet;
+}
+
+// Retorna a meta efetiva de um usuário para um ano: a do próprio ano, se
+// existir; senão herda a do ano anterior mais recente. Devolve { valor, ano }
+// da meta encontrada (ano < alvo indica herança), ou null se nunca definiu.
+function getMetaAnual(uuid, ano) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("metas");
+  if (!sheet || sheet.getLastRow() <= 1) return null;
+  const dados = sheet.getDataRange().getValues();
+  let melhor = null; // { valor, ano } com o maior ano <= alvo
+  for (let i = 1; i < dados.length; i++) {
+    const [u, a, m] = dados[i];
+    if (String(u).trim() !== String(uuid).trim()) continue;
+    const anoLinha = Number(a);
+    const valor = parseInt(m, 10);
+    if (isNaN(anoLinha) || isNaN(valor) || valor <= 0) continue;
+    if (anoLinha > ano) continue; // ignora metas de anos futuros
+    if (!melhor || anoLinha > melhor.ano) melhor = { valor: valor, ano: anoLinha };
+  }
+  return melhor;
+}
+
+// Define (upsert) a meta de um usuário para um ano.
+function setMetaAnual(uuid, ano, valor) {
+  const sheet = getSheetMetas();
+  const dados = sheet.getDataRange().getValues();
+  for (let i = 1; i < dados.length; i++) {
+    const [u, a] = dados[i];
+    if (String(u).trim() === String(uuid).trim() && Number(a) === Number(ano)) {
+      sheet.getRange(i + 1, 3).setValue(valor); // coluna C = meta
+      return;
+    }
+  }
+  sheet.appendRow([uuid, ano, valor]);
+}
+
 function handleAjuda() {
   let texto = `🤖 *Ajuda — Comandos do Bot*\n`;
   texto += `━━━━━━━━━━━━━━━━━━\n\n`;
@@ -624,6 +777,13 @@ function handleAjuda() {
 
   texto += `• /eu\n`;
   texto += `  Mostra seu bicho do mês 🐾 e lista seus treinos.\n\n`;
+
+  texto += `🎯 *Meta anual*\n`;
+  texto += `• /meta\n`;
+  texto += `  Mostra o progresso da sua meta anual de treinos.\n\n`;
+
+  texto += `• /meta NÚMERO\n`;
+  texto += `  Define a sua meta anual (ex.: /meta 150).\n\n`;
 
   texto += `📊 *Rankings*\n`;
   texto += `• /ranking\n`;
