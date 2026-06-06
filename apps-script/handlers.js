@@ -420,6 +420,13 @@ function handleRetroativo(e) {
     return "❌ Não dá pra registrar treino em data futura.";
   }
 
+  const LIMITE_DIAS_RETROATIVO = 10;
+  const limiteMinimo = new Date(hoje);
+  limiteMinimo.setDate(limiteMinimo.getDate() - LIMITE_DIAS_RETROATIVO);
+  if (data.getTime() < limiteMinimo.getTime()) {
+    return `❌ Só dá pra registrar treino retroativo de até ${LIMITE_DIAS_RETROATIVO} dias atrás.`;
+  }
+
   const usuario = getUsuarioPorIdentificador(identificador);
   if (!usuario) {
     return "❌ Usuário não encontrado. Use /cadastro Seu Nome.";
