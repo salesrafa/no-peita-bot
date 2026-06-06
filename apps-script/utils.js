@@ -88,10 +88,15 @@ function gerarRankingOlimpicoPorAno(ano) {
 
 function getCampeoesPorMes(ano) {
   const resultado = [];
+  const agora = new Date();
 
   for (let mes = 0; mes < 12; mes++) {
     const inicio = new Date(ano, mes, 1, 0, 0, 0, 0);
     const fim = new Date(ano, mes + 1, 0, 23, 59, 59, 999);
+
+    // Considera apenas meses ja finalizados: o mes corrente (ainda em andamento)
+    // e os meses futuros ficam de fora do quadro de medalhas/campeoes.
+    if (fim.getTime() >= agora.getTime()) continue;
 
     const ranking = gerarRankingPorPeriodo(inicio, fim);
     if (!ranking || ranking.length === 0) continue;

@@ -47,6 +47,33 @@ function handleRankingAno(e) {
   return formatarRanking(ranking, label);
 }
 
+function handleRankingOlimpiada(e) {
+  const partes = (e.parameter.Body || "").trim().split(/\s+/);
+  const ano = partes[1] && /^\d{4}$/.test(partes[1])
+    ? parseInt(partes[1], 10)
+    : new Date().getFullYear();
+
+  // O quadro de medalhas considera apenas meses ja finalizados (ver getCampeoesPorMes).
+  const ranking = gerarRankingOlimpicoPorAno(ano);
+
+  let texto = `🏅 *Quadro de Medalhas ${ano}*\n`;
+  texto += `_(apenas meses já finalizados)_\n`;
+  texto += `━━━━━━━━━━━━━━━\n\n`;
+
+  if (!ranking || ranking.length === 0) {
+    texto += "Nenhuma medalha registrada ainda.";
+    return texto;
+  }
+
+  ranking.forEach((r, index) => {
+    texto +=
+      `${index + 1} - *${r.nome}*  ` +
+      `🥇 ${r.ouro}  🥈 ${r.prata}  🥉 ${r.bronze}\n`;
+  });
+
+  return texto.trim();
+}
+
 function handleTicketStatus(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName("tickets");
@@ -531,9 +558,15 @@ function handleAjuda() {
   texto += `• /rankingmisterioso\n`;
   texto += `  Ranking considerando apenas treinos em dias ímpares com lua cheia 🌕.\n\n`;
 
-  texto += `🏆 *Campeões*\n`;
+  texto += `🏆 *Campeões & Medalhas*\n`;
   texto += `• /campeoes\n`;
   texto += `  Ranking de campeões mensais acumulados.\n\n`;
+
+  texto += `• /rankingolimpiada\n`;
+  texto += `  Quadro de medalhas do ano atual (🥇🥈🥉), só com meses já finalizados.\n\n`;
+
+  texto += `• /rankingolimpiada AAAA\n`;
+  texto += `  Quadro de medalhas de um ano específico.\n\n`;
 
   texto += `📦 *Wrapped*\n`;
   texto += `• /wrapped\n`;
