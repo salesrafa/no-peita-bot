@@ -56,7 +56,7 @@ npm install
 ```bash
 cp .env.example .env
 ```
-Obs: `ENVIROMENT=prod` ativa o modo de QR remoto (/qr)
+Obs: `ENVIRONMENT=prod` ativa o modo de QR remoto (/qr)
 
 ### 4. Execute localmente com reload automático
 

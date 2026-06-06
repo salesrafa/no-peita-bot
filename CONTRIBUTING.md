@@ -54,7 +54,7 @@ Preencha:
 | Variável | Descrição |
 |----------|-----------|
 | `URL` | URL `/exec` do Web App do Apps Script (o backend). |
-| `ENVIROMENT` | `dev` (responde só aos contatos de `ALLOWED_CONTACTS`) ou `prod` (responde a todos + ativa `/qr`). |
+| `ENVIRONMENT` | `dev` (responde só aos contatos de `ALLOWED_CONTACTS`) ou `prod` (responde a todos + ativa `/qr`). |
 | `SCRIPT_AUTH_TOKEN` | Token compartilhado com o backend. **Obrigatório** — sem ele o Apps Script rejeita as chamadas. |
 | `ALLOWED_CONTACTS` | Contatos/grupos permitidos no modo `dev`, separados por vírgula (ex: `5511...@c.us,1203...@g.us`). |
 
