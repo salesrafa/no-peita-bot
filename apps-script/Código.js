@@ -87,6 +87,9 @@ function doPost(e) {
     case '/ticketstatus':
       responseText = handleTicketStatus(e);
       break;
+    case '/meta':
+      responseText = handleMeta(e);
+      break;
     case '/tickets':
       responseText = handleMeusTickets(e);
       break;
