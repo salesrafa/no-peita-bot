@@ -609,7 +609,7 @@ function handleEu(e) {
 const META_ANUAL_PADRAO = 150;
 
 // /meta        -> mostra o progresso da meta anual (com barra e projeção)
-// /meta 200    -> define a meta anual pessoal (coluna G de "usuarios")
+// /meta 200    -> define a meta anual pessoal do ano corrente (aba "metas")
 function handleMeta(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const usuario = getUsuarioPorIdentificador(e.parameter.From || "");
@@ -625,17 +625,16 @@ function handleMeta(e) {
     if (isNaN(nova) || nova <= 0) {
       return "❌ Meta inválida. Informe um número positivo. Ex.: /meta 150";
     }
-    const sheet = ss.getSheetByName("usuarios");
-    sheet.getRange(usuario.indiceLinha, 7).setValue(nova); // coluna G = meta_anual
-    return `✅ Meta anual definida: *${nova}* treinos.\nUse /meta para ver seu progresso.`;
+    const ano = new Date().getFullYear();
+    setMetaAnual(usuario.uuid || usuario.id_whatsapp, ano, nova);
+    return `✅ Meta anual de ${ano} definida: *${nova}* treinos.\nUse /meta para ver seu progresso.`;
   }
 
   // /meta -> mostra o progresso
-  const metaPessoal = parseInt(usuario.linhaCompleta[6], 10); // coluna G
-  const meta = (!isNaN(metaPessoal) && metaPessoal > 0) ? metaPessoal : META_ANUAL_PADRAO;
-
   const agora = new Date();
   const ano = agora.getFullYear();
+  const metaSalva = getMetaAnual(usuario.uuid || usuario.id_whatsapp, ano);
+  const meta = metaSalva || META_ANUAL_PADRAO;
   const total = contarTreinosNoAno(usuario.uuid || usuario.id_whatsapp, ano);
 
   const pct = Math.round((total / meta) * 100);
@@ -701,6 +700,51 @@ function barraProgresso(valor, total) {
   if (cheios < 0) cheios = 0;
   if (cheios > blocos) cheios = blocos;
   return "🟩".repeat(cheios) + "⬜".repeat(blocos - cheios);
+}
+
+// Aba "metas": uma linha por (uuid, ano). Mantém histórico das metas anuais
+// sem inchar a aba "usuarios" — ano novo só vira linha nova.
+// Colunas: A uuid | B ano | C meta
+function getSheetMetas() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName("metas");
+  if (!sheet) {
+    sheet = ss.insertSheet("metas");
+  }
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(["uuid", "ano", "meta"]);
+  }
+  return sheet;
+}
+
+// Retorna a meta de um usuário em um ano, ou null se não houver.
+function getMetaAnual(uuid, ano) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("metas");
+  if (!sheet || sheet.getLastRow() <= 1) return null;
+  const dados = sheet.getDataRange().getValues();
+  for (let i = 1; i < dados.length; i++) {
+    const [u, a, m] = dados[i];
+    if (String(u).trim() === String(uuid).trim() && Number(a) === Number(ano)) {
+      const v = parseInt(m, 10);
+      return (!isNaN(v) && v > 0) ? v : null;
+    }
+  }
+  return null;
+}
+
+// Define (upsert) a meta de um usuário para um ano.
+function setMetaAnual(uuid, ano, valor) {
+  const sheet = getSheetMetas();
+  const dados = sheet.getDataRange().getValues();
+  for (let i = 1; i < dados.length; i++) {
+    const [u, a] = dados[i];
+    if (String(u).trim() === String(uuid).trim() && Number(a) === Number(ano)) {
+      sheet.getRange(i + 1, 3).setValue(valor); // coluna C = meta
+      return;
+    }
+  }
+  sheet.appendRow([uuid, ano, valor]);
 }
 
 function handleAjuda() {
