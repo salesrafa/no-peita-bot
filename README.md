@@ -91,6 +91,7 @@ npm start
 - **`/wrapped`** (ou **`/wrapped AAAA`**) — resumo do ano: campeões por mês e quadro de medalhas (estilo "retrospectiva").  
 - **`/eu`** — lista os treinos que você registrou no mês atual.  
 - **`/campeoes`** — mostra o ranking de campeões com total de títulos conquistados (🏆).  
+- **`/rankingolimpiada`** (ou **`/rankingolimpiada AAAA`**) — quadro de medalhas (🥇🥈🥉) do ano, considerando apenas os meses já finalizados.  
 - **`/rankingmisterioso`** — mostra o ranking considerando apenas treinos feitos em *dias ímpares com Lua Cheia* 🌕.  
 - **`/ticket sua mensagem`** — abre um ticket com uma sugestão, dúvida ou solicitação. Ele será criado automaticamente com status *pendente*.  
 - **`/ticketstatus ID`** — consulta o status de um ticket existente pelo número do ID.  

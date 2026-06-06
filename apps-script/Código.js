@@ -72,6 +72,9 @@ function doPost(e) {
     case '/campeoes':
       responseText = handleCampeoes();
       break;
+    case '/rankingolimpiada':
+      responseText = handleRankingOlimpiada(e);
+      break;
     case '/hoje':
       responseText = handleHoje();
       break;
