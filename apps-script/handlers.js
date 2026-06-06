@@ -509,18 +509,18 @@ function handleAjuda() {
   texto += `• /rankingano AAAA\n`;
   texto += `  Ranking de um ano específico.\n\n`;
 
+  texto += `• /anografico\n`;
+  texto += `  Gráfico com o top 10 atletas do ano atual.\n\n`;
+
+  texto += `• /anografico AAAA\n`;
+  texto += `  Gráfico com o top 10 atletas de um ano específico.\n\n`;
+
   texto += `• /rankingmisterioso\n`;
   texto += `  Ranking considerando apenas treinos em dias ímpares com lua cheia 🌕.\n\n`;
 
-  texto += `🏆 *Campeões & Medalhas*\n`;
+  texto += `🏆 *Campeões*\n`;
   texto += `• /campeoes\n`;
   texto += `  Ranking de campeões mensais acumulados.\n\n`;
-
-  texto += `• /rankingolimpiada\n`;
-  texto += `  Quadro de medalhas do ano atual (🥇🥈🥉).\n\n`;
-
-  texto += `• /rankingolimpiada AAAA\n`;
-  texto += `  Quadro de medalhas de um ano específico.\n\n`;
 
   texto += `📦 *Wrapped*\n`;
   texto += `• /wrapped\n`;
