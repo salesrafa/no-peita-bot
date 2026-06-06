@@ -148,6 +148,58 @@ function handleTicket(e) {
   return `✅ Ticket #${novoId} criado com sucesso!\nMensagem: "${mensagem}"\nStatus: pendente`;
 }
 
+// Emoji por status do ticket. Os 3 status possíveis são: pendente,
+// finalizado e ignorado.
+function emojiStatusTicket(status) {
+  const s = String(status || "").toLowerCase().trim();
+  if (s === "finalizado") return "✅";
+  if (s === "ignorado") return "🚫";
+  return "⏳"; // pendente (padrão)
+}
+
+// Lista TODOS os tickets do próprio usuário (qualquer status: pendente,
+// resolvido, ignorado...). Cada um aparece com o status atual.
+function handleMeusTickets(e) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("tickets");
+
+  const usuario = getUsuarioPorIdentificador(e.parameter.From || "");
+  if (!usuario) {
+    return "🚫 Você ainda não está cadastrado. Use: /cadastro Seu Nome";
+  }
+  if (!sheet || sheet.getLastRow() <= 1) {
+    return "🎫 Você ainda não abriu nenhum ticket.\nUse: /ticket sua mensagem";
+  }
+
+  const meuUuid = usuario.uuid || usuario.id_whatsapp;
+  const mapas = getMapasIdentidade();
+
+  const dados = sheet.getDataRange().getValues();
+  const meus = [];
+  for (let i = 1; i < dados.length; i++) {
+    const [num, nomeUsuario, id, msg, status] = dados[i];
+    if (!id) continue;
+    // resolve o dono do ticket (número→uuid, com fallback por nome)
+    if (resolverUuidTreino(num, nomeUsuario, mapas) !== meuUuid) continue;
+    meus.push({ id, msg, status });
+  }
+
+  if (meus.length === 0) {
+    return "🎫 Você ainda não abriu nenhum ticket.\nUse: /ticket sua mensagem";
+  }
+
+  meus.sort((a, b) => Number(a.id) - Number(b.id));
+
+  let resposta = `🎫 *Seus tickets (${meus.length}):*\n`;
+  meus.forEach(t => {
+    let msg = String(t.msg || "").trim();
+    if (msg.length > 60) msg = msg.slice(0, 57) + "...";
+    resposta += `#${t.id} ${emojiStatusTicket(t.status)} ${t.status} — "${msg}"\n`;
+  });
+
+  return resposta.trim();
+}
+
 function handleHoje() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName("treinos");
@@ -625,8 +677,11 @@ function handleAjuda() {
   texto += `• /ticket sua mensagem\n`;
   texto += `  Abre um ticket com sugestão ou solicitação.\n\n`;
 
+  texto += `• /tickets\n`;
+  texto += `  Lista todos os seus tickets e o status de cada um.\n\n`;
+
   texto += `• /ticketstatus ID\n`;
-  texto += `  Consulta o status de um ticket.\n\n`;
+  texto += `  Consulta o status de um ticket específico.\n\n`;
 
   texto += `❓ *Ajuda*\n`;
   texto += `• /ajuda\n`;

@@ -87,6 +87,9 @@ function doPost(e) {
     case '/ticketstatus':
       responseText = handleTicketStatus(e);
       break;
+    case '/tickets':
+      responseText = handleMeusTickets(e);
+      break;
     case 'atualizaluacheia':
       responseText = atualizarCacheLuaCheia(e);
       break;
