@@ -244,7 +244,9 @@ const BICHOS = [
   { min: 18, emoji: "🐅", nome: "Tigre",     vibe: "fera de respeito" },
   { min: 21, emoji: "🐻", nome: "Urso",      vibe: "força bruta" },
   { min: 25, emoji: "🦁", nome: "Leão",      vibe: "rei do mês" },
-  { min: 29, emoji: "🐉", nome: "Dragão",    vibe: "lendário, fora da curva" },
+  // secreto: nunca é antecipado (ajuda/aviso/“faltam X”); só aparece quando
+  // alguém de fato o conquista — é a surpresa do topo.
+  { min: 29, emoji: "🐉", nome: "Dragão",    vibe: "lendário, fora da curva", secreto: true },
 ];
 
 // Dado o total de treinos no mês, retorna { atual, proximo, faltam }.
@@ -280,7 +282,15 @@ function formatarRanking(ranking, titulo, mostrarBicho) {
     texto += `${r.rank} - ${medal}*${r.nome}* - ${r.total} treino(s) - 🔥 ${r.sequencia}${bicho}\n`;
   });
 
-  return texto.trim();
+  let resultado = texto.trim();
+
+  // Dica do bicho só quando os selos estão sendo exibidos (rankings mensais).
+  // Emoji neutro de propósito — não revela o bicho secreto do topo.
+  if (mostrarBicho) {
+    resultado += `\n\n🐾 Use /eu para entender seu bicho do mês.`;
+  }
+
+  return resultado;
 }
 
 function aplicarColocacaoComEmpate(linhas) {

@@ -536,7 +536,12 @@ function handleEu(e) {
   let resposta = `${atual.emoji} *${atual.nome}*\n`;
   resposta += `${total} treino${total === 1 ? "" : "s"} em ${nomeMes} — ${atual.vibe}!\n`;
   if (proximo) {
-    resposta += `Faltam ${faltam} treino${faltam === 1 ? "" : "s"} pra virar ${proximo.emoji} ${proximo.nome}.\n`;
+    if (proximo.secreto) {
+      // não revela o bicho lendário do topo — deixa como surpresa
+      resposta += `Faltam ${faltam} treino${faltam === 1 ? "" : "s"} pra um bicho lendário... 👀\n`;
+    } else {
+      resposta += `Faltam ${faltam} treino${faltam === 1 ? "" : "s"} pra virar ${proximo.emoji} ${proximo.nome}.\n`;
+    }
   }
 
   if (total > 0) {
@@ -566,7 +571,7 @@ function handleAjuda() {
   texto += `  Mostra quem já treinou hoje.\n\n`;
 
   texto += `• /eu\n`;
-  texto += `  Mostra seu bicho do mês 🐉 e lista seus treinos.\n\n`;
+  texto += `  Mostra seu bicho do mês 🐾 e lista seus treinos.\n\n`;
 
   texto += `📊 *Rankings*\n`;
   texto += `• /ranking\n`;
@@ -593,9 +598,10 @@ function handleAjuda() {
   texto += `• /rankingmisterioso\n`;
   texto += `  Ranking considerando apenas treinos em dias ímpares com lua cheia 🌕.\n\n`;
 
-  texto += `🐉 *Bicho do mês*\n`;
+  texto += `🐾 *Bicho do mês*\n`;
   texto += `  Classificação individual (sem competir com ninguém): seu bicho\n`;
-  texto += `  evolui conforme seus treinos no mês, do 🥚 Ovo ao 🐉 Dragão.\n`;
+  texto += `  evolui conforme seus treinos no mês, começando no 🥚 Ovo.\n`;
+  texto += `  Tem bicho lendário escondido pra quem chegar lá 👀\n`;
   texto += `  Aparece no /ranking e em detalhe no /eu.\n\n`;
 
   texto += `🏆 *Campeões & Medalhas*\n`;
