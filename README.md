@@ -86,6 +86,9 @@ npm start
 - **`/hoje`** — lista quem já registrou treino hoje.  
 - **`/ranking`** — mostra o ranking de treinos do mês atual (com critérios de desempate).  
 - **`/ranking MM/AAAA`** — mostra o ranking de treinos de um mês específico.  
+- **`/rankingano`** (ou **`/rankingano AAAA`**) — mostra o ranking acumulado do ano atual (ou de um ano específico).  
+- **`/anografico`** (ou **`/anografico AAAA`**) — gera um gráfico com o top 10 atletas do ano.  
+- **`/wrapped`** (ou **`/wrapped AAAA`**) — resumo do ano: campeões por mês e quadro de medalhas (estilo "retrospectiva").  
 - **`/eu`** — lista os treinos que você registrou no mês atual.  
 - **`/campeoes`** — mostra o ranking de campeões com total de títulos conquistados (🏆).  
 - **`/rankingmisterioso`** — mostra o ranking considerando apenas treinos feitos em *dias ímpares com Lua Cheia* 🌕.  
