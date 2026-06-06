@@ -1,5 +1,5 @@
 import { Client, Message } from 'whatsapp-web.js';
-import { enviroment, allowedContacts } from '../config';
+import { environment, allowedContacts } from '../config';
 import { handleMessage } from './scriptApi';
 import { carregarAdmins, isAdmin } from './adminService';
 
@@ -31,7 +31,7 @@ export function initClient(): void {
   client.initialize();
 
   client.on('qr', (qr: string) => {
-    if (enviroment === 'prod') {
+    if (environment === 'prod') {
       ultimaQr = qr;
     } else {
       console.log('🟡 QR RECEIVED:\n', qr);
@@ -47,7 +47,7 @@ export function initClient(): void {
     const isCommand = msg.body.startsWith('/');
 
     if (!isCommand) return;
-    if (enviroment !== 'prod' && !isAllowed) return;
+    if (environment !== 'prod' && !isAllowed) return;
 
     try {
       await handleMessage(msg, client, ultimaQr);
