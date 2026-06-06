@@ -447,11 +447,12 @@ function handlePontuar(e) {
 }
 
 function handleRanking(e) {
-  const { inicio, fim, label } = getPeriodoPorMensagem(e.parameter.Body);
+  const { inicio, fim, label, tipo } = getPeriodoPorMensagem(e.parameter.Body);
 
   const ranking = gerarRankingPorPeriodo(inicio, fim);
 
-  return formatarRanking(ranking, label);
+  // mostra o selo do bicho só nos rankings mensais (não em intervalos de data)
+  return formatarRanking(ranking, label, tipo === "mes");
 }
 
 function handleRetroativo(e) {
@@ -527,13 +528,21 @@ function handleEu(e) {
     .map(row => Utilities.formatDate(new Date(row[2]), "GMT-3", "dd/MM/yyyy"))
     .sort();
 
-  if (datas.length === 0) {
-    return "📆 Você ainda não treinou neste mês.";
+  const nomeMes = getNomeMesEmPortugues(mesAtual);
+  const total = datas.length;
+  const { atual, proximo, faltam } = classificarBicho(total);
+
+  // Selo do bicho (classificação individual do mês) + incentivo do próximo nível
+  let resposta = `${atual.emoji} *${atual.nome}*\n`;
+  resposta += `${total} treino${total === 1 ? "" : "s"} em ${nomeMes} — ${atual.vibe}!\n`;
+  if (proximo) {
+    resposta += `Faltam ${faltam} treino${faltam === 1 ? "" : "s"} pra virar ${proximo.emoji} ${proximo.nome}.\n`;
   }
 
-  const nomeMes = getNomeMesEmPortugues(mesAtual);
-  let resposta = `📆 Seus treinos em ${nomeMes}:\n`;
-  datas.forEach(data => resposta += `- ${data}\n`);
+  if (total > 0) {
+    resposta += `\n📆 Seus treinos em ${nomeMes}:\n`;
+    datas.forEach(data => resposta += `- ${data}\n`);
+  }
 
   return resposta.trim();
 }
@@ -557,7 +566,7 @@ function handleAjuda() {
   texto += `  Mostra quem já treinou hoje.\n\n`;
 
   texto += `• /eu\n`;
-  texto += `  Lista seus treinos no mês atual.\n\n`;
+  texto += `  Mostra seu bicho do mês 🐉 e lista seus treinos.\n\n`;
 
   texto += `📊 *Rankings*\n`;
   texto += `• /ranking\n`;
@@ -583,6 +592,11 @@ function handleAjuda() {
 
   texto += `• /rankingmisterioso\n`;
   texto += `  Ranking considerando apenas treinos em dias ímpares com lua cheia 🌕.\n\n`;
+
+  texto += `🐉 *Bicho do mês*\n`;
+  texto += `  Classificação individual (sem competir com ninguém): seu bicho\n`;
+  texto += `  evolui conforme seus treinos no mês, do 🥚 Ovo ao 🐉 Dragão.\n`;
+  texto += `  Aparece no /ranking e em detalhe no /eu.\n\n`;
 
   texto += `🏆 *Campeões & Medalhas*\n`;
   texto += `• /campeoes\n`;
