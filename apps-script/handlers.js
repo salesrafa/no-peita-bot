@@ -625,6 +625,9 @@ function handleMeta(e) {
     if (isNaN(nova) || nova <= 0) {
       return "❌ Meta inválida. Informe um número positivo. Ex.: /meta 150";
     }
+    if (nova > 366) {
+      return "❌ A meta não pode passar de 366 — só dá pra treinar 1x por dia. Ex.: /meta 150";
+    }
     const ano = new Date().getFullYear();
     setMetaAnual(usuario.uuid || usuario.id_whatsapp, ano, nova);
     return `✅ Meta anual de ${ano} definida: *${nova}* treinos.\nUse /meta para ver seu progresso.`;
