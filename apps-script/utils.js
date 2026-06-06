@@ -200,6 +200,7 @@ function getPeriodoPorMensagem(body) {
   let inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
   let fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 23, 59, 59, 999);
   let label = `${getNomeMesEmPortugues(hoje.getMonth())}/${hoje.getFullYear()}`;
+  let tipo = "mes"; // "mes" (mês inteiro) | "intervalo" (range de datas)
 
   // /ranking MM/AAAA
   if (partes.length === 2 && /^\d{2}\/\d{4}$/.test(partes[1])) {
@@ -221,12 +222,46 @@ function getPeriodoPorMensagem(body) {
     inicio = parseDataBR(partes[1], true);
     fim = parseDataBR(partes[2], false);
     label = `${partes[1]} → ${partes[2]}`;
+    tipo = "intervalo";
   }
 
-  return { inicio, fim, label };
+  return { inicio, fim, label, tipo };
 }
 
-function formatarRanking(ranking, titulo) {
+// Classificação secundária, individual e não-comparativa: cada faixa exige um
+// total fixo de treinos no mês. Reordenada do mais fraco ao lendário. O nível
+// é só do desempenho da própria pessoa — não depende dos outros.
+const BICHOS = [
+  { min: 0,  emoji: "🥚", nome: "Ovo",       vibe: "ainda não chocou no mês" },
+  { min: 1,  emoji: "🐔", nome: "Frango",    vibe: "tá começando!" },
+  { min: 2,  emoji: "🐢", nome: "Tartaruga", vibe: "devagar, mas não parou" },
+  { min: 3,  emoji: "🐰", nome: "Coelho",    vibe: "ligou o foguinho" },
+  { min: 5,  emoji: "🐶", nome: "Cachorro",  vibe: "animado e fiel ao treino" },
+  { min: 7,  emoji: "🦊", nome: "Raposa",    vibe: "esperto, achou o ritmo" },
+  { min: 9,  emoji: "🐗", nome: "Javali",    vibe: "brutão, entrou com tudo" },
+  { min: 12, emoji: "🐺", nome: "Lobo",      vibe: "entrou na alcateia" },
+  { min: 15, emoji: "🐆", nome: "Onça",      vibe: "predador ágil" },
+  { min: 18, emoji: "🐅", nome: "Tigre",     vibe: "fera de respeito" },
+  { min: 21, emoji: "🐻", nome: "Urso",      vibe: "força bruta" },
+  { min: 25, emoji: "🦁", nome: "Leão",      vibe: "rei do mês" },
+  { min: 29, emoji: "🐉", nome: "Dragão",    vibe: "lendário, fora da curva" },
+];
+
+// Dado o total de treinos no mês, retorna { atual, proximo, faltam }.
+// proximo é null quando já se atingiu o topo (Dragão).
+function classificarBicho(total) {
+  const n = Number(total) || 0;
+  let idx = 0;
+  for (let i = 0; i < BICHOS.length; i++) {
+    if (n >= BICHOS[i].min) idx = i; else break;
+  }
+  const atual = BICHOS[idx];
+  const proximo = idx < BICHOS.length - 1 ? BICHOS[idx + 1] : null;
+  const faltam = proximo ? proximo.min - n : 0;
+  return { atual, proximo, faltam };
+}
+
+function formatarRanking(ranking, titulo, mostrarBicho) {
   if (ranking.length === 0) {
     return "📊 Nenhum treino encontrado no período.";
   }
@@ -239,7 +274,10 @@ function formatarRanking(ranking, titulo) {
       r.rank === 2 ? "🥈 " :
       r.rank === 3 ? "🥉 " : "";
 
-    texto += `${r.rank} - ${medal}*${r.nome}* - ${r.total} treino(s) - 🔥 ${r.sequencia}\n`;
+    // Selo do bicho só nos rankings mensais (faixa é meta mensal fixa).
+    const bicho = mostrarBicho ? ` ${classificarBicho(r.total).atual.emoji}` : "";
+
+    texto += `${r.rank} - ${medal}*${r.nome}* - ${r.total} treino(s) - 🔥 ${r.sequencia}${bicho}\n`;
   });
 
   return texto.trim();
