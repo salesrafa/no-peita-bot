@@ -156,20 +156,21 @@ function handleHoje() {
   const hoje = new Date();
   const hojeStr = formatarData(hoje); // formato dd/MM/yyyy
 
-  // Deduplica por id_whatsapp (coluna 0), nao por nome: assim dois usuarios
-  // com o mesmo nome contam como pessoas diferentes. O nome exibido e o que
-  // foi gravado na linha do treino.
-  const treinaramHoje = new Map(); // id_whatsapp -> nome
+  // Deduplica por uuid canônico (resolvido da coluna 0), nao por nome: assim
+  // dois usuarios com o mesmo nome contam como pessoas diferentes. O nome
+  // exibido e o que foi gravado na linha do treino.
+  const mapas = getMapasIdentidade();
+  const treinaramHoje = new Map(); // uuid -> nome
 
   for (let i = 1; i < dados.length; i++) {
     const [id, nome, dataStr] = dados[i];
-    if (!id || !dataStr) continue;
+    if ((!id && !nome) || !dataStr) continue;
 
     const data = new Date(dataStr);
     const dataFormatada = formatarData(data);
 
     if (dataFormatada === hojeStr) {
-      treinaramHoje.set(id, nome);
+      treinaramHoje.set(resolverUuidTreino(id, nome, mapas), nome);
     }
   }
 
@@ -281,44 +282,37 @@ function handleCampeoes() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const campeoesSheet = ss.getSheetByName("campeoes");
   const treinosSheet = ss.getSheetByName("treinos");
-  const usuariosSheet = ss.getSheetByName("usuarios");
 
-  // 1. VITÓRIAS MANUAIS
+  const mapas = getMapasIdentidade();
+
+  // 1. VITÓRIAS MANUAIS (aba 'campeoes', chaveada por uuid após migração)
   const linhasCampeoes = campeoesSheet.getDataRange().getValues();
-  const mapaNumeros = {}; // numero → nome (opcional, se quiser expandir)
-  const vitoriasManuais = {}; // numero → qtd
+  const mapaNumeros = getMapaUuidParaNome(); // uuid → nome canônico
+  const vitoriasManuais = {}; // uuid → qtd
 
   for (let i = 1; i < linhasCampeoes.length; i++) {
-    const [numero, qtd] = linhasCampeoes[i];
-    if (!numero || !qtd) continue;
-    vitoriasManuais[numero] = parseInt(qtd, 10);
+    const [chave, qtd] = linhasCampeoes[i];
+    if (!chave || !qtd) continue;
+    const uuid = resolverUuidTreino(chave, "", mapas);
+    vitoriasManuais[uuid] = parseInt(qtd, 10);
   }
 
-  // 2. nomes da aba 'usuarios' (complementar o mapa)
-  const usuarios = usuariosSheet.getDataRange().getValues();
-  usuarios.forEach(row => {
-    const numero = row[0];
-    const nome = row[1];
-    if (numero && nome && !mapaNumeros[numero]) {
-      mapaNumeros[numero] = nome;
-    }
-  });
-
-  // 3. VITÓRIAS AUTOMÁTICAS (ranking por mês)
+  // 2. VITÓRIAS AUTOMÁTICAS (ranking por mês)
   const treinos = treinosSheet.getDataRange().getValues();
-  const porMesAno = {}; // "mm/yyyy" → { numero: [datas] }
+  const porMesAno = {}; // "mm/yyyy" → { uuid: [datas] }
 
   for (let i = 1; i < treinos.length; i++) {
-    const [numero, nome, dataStr] = treinos[i];
-    if (!numero || !dataStr) continue;
+    const [col0, nome, dataStr] = treinos[i];
+    if ((!col0 && !nome) || !dataStr) continue;
+    const uuid = resolverUuidTreino(col0, nome, mapas);
     const data = new Date(dataStr);
     const chave = `${("0" + (data.getMonth() + 1)).slice(-2)}/${data.getFullYear()}`;
 
     if (!porMesAno[chave]) porMesAno[chave] = {};
-    if (!porMesAno[chave][numero]) porMesAno[chave][numero] = [];
+    if (!porMesAno[chave][uuid]) porMesAno[chave][uuid] = [];
 
-    porMesAno[chave][numero].push(data);
-    mapaNumeros[numero] = nome;
+    porMesAno[chave][uuid].push(data);
+    if (!mapaNumeros[uuid] && nome) mapaNumeros[uuid] = nome;
   }
 
   const vitoriasGeradas = {};
@@ -360,7 +354,7 @@ function handleCampeoes() {
     });
   });
 
-  // 4. SOMAR TUDO
+  // 3. SOMAR TUDO (chaves = uuid)
   const totalPorNumero = {};
 
   const todosNumeros = new Set([
@@ -412,8 +406,6 @@ function handleMessageLog(e, comando) {
 }
 
 function handleCadastro(e) {
-  // TODO gerar um UUID para cada usuario e linka-los nas outras páginas. 
-  // Fazer a busca por usuário pegar o FROM e buscar tanto por "lid" quanto por "numero backup" e devolvendo o UUID
   const idenficador = e.parameter.From || "";
   const nomeJaCadastrado = getNomeUsuario(idenficador);
 
@@ -428,8 +420,10 @@ function handleCadastro(e) {
   }
 
   const nome = mensagem.substring(10).trim();
+  const uuid = Utilities.getUuid(); // identidade interna estável
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("usuarios");
-  sheet.appendRow([idenficador, nome, timestamp]);
+  // Colunas: A id_whatsapp | B nome | C data | D role | E numero | F uuid
+  sheet.appendRow([idenficador, nome, timestamp, "", "", uuid]);
   return `✅ Cadastro realizado com sucesso, ${nome}!`;
 }
 
@@ -447,7 +441,7 @@ function handlePontuar(e) {
   }
 
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("treinos");
-  sheet.appendRow([usuario.id_whatsapp, usuario.nome, hoje]);
+  sheet.appendRow([usuario.uuid || usuario.id_whatsapp, usuario.nome, hoje]);
 
   return "✅ Treino registrado com sucesso!";
 }
@@ -496,7 +490,7 @@ function handleRetroativo(e) {
   }
 
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("treinos");
-  sheet.appendRow([usuario.id_whatsapp, usuario.nome, data]);
+  sheet.appendRow([usuario.uuid || usuario.id_whatsapp, usuario.nome, data]);
 
   return `✅ Treino registrado em ${Utilities.formatDate(
     data,
@@ -514,7 +508,8 @@ function handleEu(e) {
   if (!usuario) {
     return "🚫 Você ainda não está cadastrado. Use: /cadastro Seu Nome";
   }
-  const idUsuario = usuario.id_whatsapp;
+  const uuidUsuario = usuario.uuid || usuario.id_whatsapp;
+  const mapas = getMapasIdentidade();
   const treinosSheet = ss.getSheetByName("treinos");
   const agora = new Date();
   const mesAtual = agora.getMonth();
@@ -524,9 +519,8 @@ function handleEu(e) {
 
   const datas = treinos
     .filter(row => {
-      const idTreino = row[0];
       const data = new Date(row[2]);
-      return idTreino === idUsuario &&
+      return resolverUuidTreino(row[0], row[1], mapas) === uuidUsuario &&
         data.getMonth() === mesAtual &&
         data.getFullYear() === anoAtual;
     })

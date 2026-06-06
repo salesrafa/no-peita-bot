@@ -282,22 +282,36 @@ function gerarRankingPorPeriodo(dataInicio, dataFim, filtroDataFn) {
   const dadosTreinos = sheetTreinos.getDataRange().getValues();
   const dadosAB = sheetAB ? sheetAB.getDataRange().getValues() : [];
 
-  const porPessoa = {}; // nome -> { datas: [], totalAB: number }
+  const mapas = getMapasIdentidade();
+  const uuidParaNome = getMapaUuidParaNome();
+
+  const porPessoa = {}; // uuid -> { nome, datas: [], totalAB: number }
+
+  // Garante o bucket de um uuid, resolvendo o nome canônico de exibição.
+  function bucket(uuid, nomeFallback) {
+    if (!porPessoa[uuid]) {
+      porPessoa[uuid] = {
+        nome: uuidParaNome[uuid] || nomeFallback || uuid,
+        datas: [],
+        totalAB: 0,
+      };
+    }
+    return porPessoa[uuid];
+  }
 
   // ---------- treinos diários (pós-bot) ----------
   for (let i = 1; i < dadosTreinos.length; i++) {
-    const [numero, nome, dataStr] = dadosTreinos[i];
-    if (!nome || !dataStr) continue;
+    const [col0, nome, dataStr] = dadosTreinos[i];
+    if ((!col0 && !nome) || !dataStr) continue;
 
     const data = new Date(dataStr);
     if (data < dataInicio || data > dataFim) continue;
     if (filtroDataFn && !filtroDataFn(data)) continue;
 
-    if (!porPessoa[nome]) {
-      porPessoa[nome] = { datas: [], totalAB: 0 };
-    }
+    const uuid = resolverUuidTreino(col0, nome, mapas);
+    if (!uuid) continue;
 
-    porPessoa[nome].datas.push(new Date(data));
+    bucket(uuid, nome).datas.push(new Date(data));
   }
 
   // ---------- treinos agregados (pré-bot | SOMENTE 2025) ----------
@@ -320,11 +334,9 @@ function gerarRankingPorPeriodo(dataInicio, dataFim, filtroDataFn) {
       // mês fora do intervalo → ignora
       if (fimMes < dataInicio || inicioMes > dataFim) continue;
 
-      if (!porPessoa[nome]) {
-        porPessoa[nome] = { datas: [], totalAB: 0 };
-      }
-
-      porPessoa[nome].totalAB += Number(total);
+      // treinos-AB só têm nome; resolve por nome (fallback ao próprio nome).
+      const uuid = mapas.porNome[String(nome).trim()] || String(nome).trim();
+      bucket(uuid, nome).totalAB += Number(total);
     }
   }
 
@@ -332,7 +344,8 @@ function gerarRankingPorPeriodo(dataInicio, dataFim, filtroDataFn) {
 }
 
 function calcularMetricasRankingComAB(porPessoa) {
-  const linhas = Object.entries(porPessoa).map(([nome, info]) => {
+  const linhas = Object.entries(porPessoa).map(([uuid, info]) => {
+    const nome = info.nome;
     const datas = info.datas;
 
     const diasUnicos = Array.from(
@@ -375,10 +388,11 @@ function getUsuarioPorIdentificador(identificador) {
   if (!sheet) return null;
 
   const dados = sheet.getDataRange().getValues();
-  const COL_ID = 0;           // coluna A -> id_whatsapp (novo ID aleatório)
+  const COL_ID = 0;           // coluna A -> id_whatsapp (lid)
   const COL_NOME = 1;         // coluna B -> nome
   const COL_ROLE = 3;         // coluna D -> role
-  const COL_NUMERO_REAL = 4;  // coluna E -> número real
+  const COL_NUMERO_REAL = 4;  // coluna E -> número real (backup)
+  const COL_UUID = 5;         // coluna F -> uuid canônico
 
   for (let i = 1; i < dados.length; i++) {
     const linha = dados[i];
@@ -393,6 +407,7 @@ function getUsuarioPorIdentificador(identificador) {
         nome: linha[COL_NOME],
         role: linha[COL_ROLE],
         numero: linha[COL_NUMERO_REAL],
+        uuid: String(linha[COL_UUID] || "").trim(),
         linhaCompleta: linha,
         indiceLinha: i + 1, // para atualizações futuras (1-based)
       };
@@ -405,6 +420,67 @@ function getUsuarioPorIdentificador(identificador) {
 function getNomeUsuario(identificador) {
   const usuario = getUsuarioPorIdentificador(identificador);
   return usuario ? usuario.nome : null;
+}
+
+// Resolve o uuid canônico de um usuário a partir de qualquer identificador
+// do WhatsApp (lid ou número). Retorna null se não cadastrado.
+function resolverUuid(identificador) {
+  const usuario = getUsuarioPorIdentificador(identificador);
+  return usuario ? usuario.uuid : null;
+}
+
+// Constrói mapas de identidade a partir da aba "usuarios", usados para resolver
+// qualquer chave de linha de treino (id_whatsapp legado, número, nome ou o
+// próprio uuid) ao uuid canônico. Chamado uma vez por leitura em lote.
+function getMapasIdentidade() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("usuarios");
+  const porChave = {}; // id_whatsapp | numero | uuid -> uuid
+  const porNome = {};  // nome -> uuid (fallback p/ treinos-AB e linhas legadas)
+  if (!sheet) return { porChave, porNome };
+
+  const dados = sheet.getDataRange().getValues();
+  const COL_ID = 0, COL_NOME = 1, COL_NUMERO = 4, COL_UUID = 5;
+  for (let i = 1; i < dados.length; i++) {
+    const id = String(dados[i][COL_ID] || "").trim();
+    const nome = String(dados[i][COL_NOME] || "").trim();
+    const numero = String(dados[i][COL_NUMERO] || "").trim();
+    const uuid = String(dados[i][COL_UUID] || "").trim();
+    if (!uuid) continue;
+    porChave[uuid] = uuid;
+    if (id) porChave[id] = uuid;
+    if (numero) porChave[numero] = uuid;
+    if (nome && !(nome in porNome)) porNome[nome] = uuid;
+  }
+  return { porChave, porNome };
+}
+
+// Resolve a chave canônica (uuid) de uma linha de treino. Usa o valor da
+// coluna 0 (id_whatsapp legado ou uuid) e, como fallback, o nome (coluna 1) —
+// necessário para treinos cujo id_whatsapp antigo já não existe em "usuarios"
+// e para a aba "treinos-AB" (que só tem nome). Se nada casar, devolve o próprio
+// valor bruto para não perder a linha.
+function resolverUuidTreino(valorCol0, nome, mapas) {
+  const chave = String(valorCol0 || "").trim();
+  if (mapas.porChave[chave]) return mapas.porChave[chave];
+  const n = String(nome || "").trim();
+  if (n && mapas.porNome[n]) return mapas.porNome[n];
+  return chave || n;
+}
+
+// Mapa uuid -> nome canônico (coluna B de "usuarios"), para exibição.
+function getMapaUuidParaNome() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("usuarios");
+  const mapa = {};
+  if (!sheet) return mapa;
+  const dados = sheet.getDataRange().getValues();
+  for (let i = 1; i < dados.length; i++) {
+    const nome = String(dados[i][1] || "").trim();
+    const uuid = String(dados[i][5] || "").trim();
+    if (uuid && nome) mapa[uuid] = nome;
+  }
+  return mapa;
 }
 
 function formatarData(data) {
@@ -449,7 +525,9 @@ function jaTreinouNaData(identificador, data) {
   const usuario = getUsuarioPorIdentificador(identificador);
   if (!usuario) return false;
 
-  const idUsuario = usuario.id_whatsapp;
+  // uuid canônico; cai para o id_whatsapp enquanto a migração não rodou.
+  const uuidUsuario = usuario.uuid || usuario.id_whatsapp;
+  const mapas = getMapasIdentidade();
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName("treinos");
@@ -464,11 +542,11 @@ function jaTreinouNaData(identificador, data) {
   ).getTime();
 
   for (let i = 1; i < dados.length; i++) {
-    const [idTreino, , dataStr] = dados[i];
-    if (!idTreino || !dataStr) continue;
+    const [idTreino, nomeTreino, dataStr] = dados[i];
+    if ((!idTreino && !nomeTreino) || !dataStr) continue;
 
-    // 🔑 compara pelo ID
-    if (idTreino !== idUsuario) continue;
+    // 🔑 compara pelo uuid canônico resolvido
+    if (resolverUuidTreino(idTreino, nomeTreino, mapas) !== uuidUsuario) continue;
 
     const d = new Date(dataStr);
     const dTime = new Date(
