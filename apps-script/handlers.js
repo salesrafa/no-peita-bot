@@ -148,14 +148,13 @@ function handleTicket(e) {
   return `✅ Ticket #${novoId} criado com sucesso!\nMensagem: "${mensagem}"\nStatus: pendente`;
 }
 
-// Emoji por status do ticket. O status é texto livre na planilha (admins
-// editam à mão), então cobrimos os casos comuns e caímos em ⏳ no resto.
+// Emoji por status do ticket. Os 3 status possíveis são: pendente,
+// finalizado e ignorado.
 function emojiStatusTicket(status) {
   const s = String(status || "").toLowerCase().trim();
-  if (["resolvido", "concluido", "concluído", "feito", "ok"].indexOf(s) !== -1) return "✅";
-  if (["ignorado", "recusado", "cancelado", "rejeitado", "nao", "não"].indexOf(s) !== -1) return "🚫";
-  if (s.indexOf("andamento") !== -1) return "🔧";
-  return "⏳"; // pendente / desconhecido
+  if (s === "finalizado") return "✅";
+  if (s === "ignorado") return "🚫";
+  return "⏳"; // pendente (padrão)
 }
 
 // Lista TODOS os tickets do próprio usuário (qualquer status: pendente,
