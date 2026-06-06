@@ -156,27 +156,29 @@ function handleHoje() {
   const hoje = new Date();
   const hojeStr = formatarData(hoje); // formato dd/MM/yyyy
 
-  const nomesHoje = new Set();
+  // Deduplica por id_whatsapp (coluna 0), nao por nome: assim dois usuarios
+  // com o mesmo nome contam como pessoas diferentes. O nome exibido e o que
+  // foi gravado na linha do treino.
+  const treinaramHoje = new Map(); // id_whatsapp -> nome
 
   for (let i = 1; i < dados.length; i++) {
-    //TODO mudar para fazer a busca por idenficador ao invés de nome
-    const [_, nome, dataStr] = dados[i];
-    if (!nome || !dataStr) continue;
+    const [id, nome, dataStr] = dados[i];
+    if (!id || !dataStr) continue;
 
     const data = new Date(dataStr);
     const dataFormatada = formatarData(data);
 
     if (dataFormatada === hojeStr) {
-      nomesHoje.add(nome);
+      treinaramHoje.set(id, nome);
     }
   }
 
-  if (nomesHoje.size === 0) {
+  if (treinaramHoje.size === 0) {
     return "🕒 Ninguém registrou treino hoje ainda.\nBora ser o primeiro? 💪";
   }
 
   let resposta = `✅ *Treinos de hoje (${hojeStr}):*\n`;
-  [...nomesHoje].sort().forEach((nome, i) => {
+  [...treinaramHoje.values()].sort().forEach(nome => {
     resposta += `- ${nome}\n`;
   });
 
