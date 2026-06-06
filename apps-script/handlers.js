@@ -186,56 +186,45 @@ function handleHoje() {
 }
 
 function handleRankingMisterioso() {
-  //TODO mudar abordagem para usar uma função que cria uma lista baseado em data inicial e final
-  // {{identificador}} {{data-do-treino}}
-  //e depois essa função pega essa lista e contabiliza apenas as datas de lua cheia
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const treinosSheet = ss.getSheetByName("treinos");
   const luaCheiaSheet = ss.getSheetByName("lua_cheia");
 
-  const treinos = treinosSheet.getDataRange().getValues();
   const hoje = new Date();
 
-  // === PEGAR DATAS VÁLIDAS (lua cheia + ímpar + passadas)
+  // === DATAS VÁLIDAS (lua cheia + dia ímpar): passadas contam; futuras viram "próxima"
   const dadosLuaCheia = luaCheiaSheet.getDataRange().getValues();
-  const datasValidas = [];
-  const datasFuturas = [];
+  const datasValidas = [];   // dd/MM/yyyy já passadas
+  const datasFuturas = [];   // { raw, formatada }
 
   for (let i = 1; i < dadosLuaCheia.length; i++) {
-    const linha = dadosLuaCheia[i];
-    const dataObj = linha[2];
+    const dataObj = dadosLuaCheia[i][2];
     if (!dataObj) continue;
 
     const data = typeof dataObj === "string"
       ? Utilities.parseDate(dataObj, Session.getScriptTimeZone(), "dd/MM/yyyy")
       : new Date(dataObj);
 
-    const dia = data.getDate();
-    const dataFormatada = Utilities.formatDate(data, "GMT-3", "dd/MM/yyyy");
+    if (data.getDate() % 2 !== 1) continue; // só dias ímpares
 
-    if (dia % 2 === 1) {
-      if (data <= hoje) {
-        datasValidas.push(dataFormatada);
-      } else {
-        datasFuturas.push({ raw: data, formatada: dataFormatada });
-      }
+    const formatada = formatarData(data);
+    if (data <= hoje) {
+      datasValidas.push(formatada);
+    } else {
+      datasFuturas.push({ raw: data, formatada });
     }
   }
 
-  // === CONTAR TREINOS EM DATAS VÁLIDAS
-  const contagem = {};
-  for (let i = 1; i < treinos.length; i++) {
-    const [numero, nome, dataStr] = treinos[i];
-    if (!numero || !dataStr) continue;
+  // === RANKING: delega a contagem para gerarRankingPorPeriodo, filtrando
+  // apenas os treinos cujas datas estão na lista de datas válidas.
+  const datasValidasSet = new Set(datasValidas);
+  const inicio = new Date(2000, 0, 1);
+  const fim = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59, 999);
 
-    const dataFormatada = formatarData(new Date(dataStr));
-    if (datasValidas.includes(dataFormatada)) {
-      if (!contagem[nome]) contagem[nome] = 0;
-      contagem[nome]++;
-    }
-  }
-
-  const ranking = Object.entries(contagem).sort((a, b) => b[1] - a[1]);
+  const ranking = gerarRankingPorPeriodo(
+    inicio,
+    fim,
+    (data) => datasValidasSet.has(formatarData(data))
+  );
 
   // === MONTAR RESPOSTA
   let resposta = "🌕 *Ranking Misterioso* (dias ímpares com Lua Cheia)\n\n";
@@ -250,8 +239,8 @@ function handleRankingMisterioso() {
   if (ranking.length === 0) {
     resposta += "Ninguém pontuou nessas datas ainda.";
   } else {
-    ranking.forEach(([nome, qtd], i) => {
-      resposta += `${i + 1}. ${nome} - ${qtd} ponto${qtd > 1 ? 's' : ''}\n`;
+    ranking.forEach((r, i) => {
+      resposta += `${i + 1}. ${r.nome} - ${r.total} ponto${r.total > 1 ? 's' : ''}\n`;
     });
   }
 

@@ -269,7 +269,10 @@ function aplicarColocacaoComEmpate(linhas) {
   });
 }
 
-//TODO fazer ranking misterioso usar essa função também
+// filtroDataFn (opcional): recebe a data de cada treino diario e devolve
+// true/false para inclui-lo. Quando informado, os treinos agregados (AB,
+// pre-bot) sao ignorados, pois sao totais mensais sem data por dia e nao
+// dao para filtrar por dia (ex: ranking misterioso por datas de lua cheia).
 function gerarRankingPorPeriodo(dataInicio, dataFim, filtroDataFn) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
@@ -300,8 +303,10 @@ function gerarRankingPorPeriodo(dataInicio, dataFim, filtroDataFn) {
   // ---------- treinos agregados (pré-bot | SOMENTE 2025) ----------
   const ANO_AB = 2025;
 
-  // só considera AB se o período tocar 2025
+  // só considera AB se o período tocar 2025 e não houver filtro por data
+  // (totais mensais não têm data por dia para aplicar o filtro)
   if (
+    !filtroDataFn &&
     dataInicio.getFullYear() <= ANO_AB &&
     dataFim.getFullYear() >= ANO_AB
   ) {
