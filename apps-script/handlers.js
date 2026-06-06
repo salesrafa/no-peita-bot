@@ -633,8 +633,9 @@ function handleMeta(e) {
   // /meta -> mostra o progresso
   const agora = new Date();
   const ano = agora.getFullYear();
-  const metaSalva = getMetaAnual(usuario.uuid || usuario.id_whatsapp, ano);
-  const meta = metaSalva || META_ANUAL_PADRAO;
+  const metaInfo = getMetaAnual(usuario.uuid || usuario.id_whatsapp, ano);
+  const meta = metaInfo ? metaInfo.valor : META_ANUAL_PADRAO;
+  const herdada = metaInfo && metaInfo.ano < ano; // meta veio de um ano anterior
   const total = contarTreinosNoAno(usuario.uuid || usuario.id_whatsapp, ano);
 
   const pct = Math.round((total / meta) * 100);
@@ -666,6 +667,10 @@ function handleMeta(e) {
       resposta += `📉 No ritmo atual fecha em ~${projetado}. ` +
         `Faltam ${restante} treinos — ~${porSemana}/semana pra alcançar.`;
     }
+  }
+
+  if (herdada) {
+    resposta += `\n\nℹ️ Meta herdada de ${metaInfo.ano} — defina a de ${ano} com /meta N`;
   }
 
   return resposta.trim();
@@ -717,20 +722,25 @@ function getSheetMetas() {
   return sheet;
 }
 
-// Retorna a meta de um usuário em um ano, ou null se não houver.
+// Retorna a meta efetiva de um usuário para um ano: a do próprio ano, se
+// existir; senão herda a do ano anterior mais recente. Devolve { valor, ano }
+// da meta encontrada (ano < alvo indica herança), ou null se nunca definiu.
 function getMetaAnual(uuid, ano) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName("metas");
   if (!sheet || sheet.getLastRow() <= 1) return null;
   const dados = sheet.getDataRange().getValues();
+  let melhor = null; // { valor, ano } com o maior ano <= alvo
   for (let i = 1; i < dados.length; i++) {
     const [u, a, m] = dados[i];
-    if (String(u).trim() === String(uuid).trim() && Number(a) === Number(ano)) {
-      const v = parseInt(m, 10);
-      return (!isNaN(v) && v > 0) ? v : null;
-    }
+    if (String(u).trim() !== String(uuid).trim()) continue;
+    const anoLinha = Number(a);
+    const valor = parseInt(m, 10);
+    if (isNaN(anoLinha) || isNaN(valor) || valor <= 0) continue;
+    if (anoLinha > ano) continue; // ignora metas de anos futuros
+    if (!melhor || anoLinha > melhor.ano) melhor = { valor: valor, ano: anoLinha };
   }
-  return null;
+  return melhor;
 }
 
 // Define (upsert) a meta de um usuário para um ano.
