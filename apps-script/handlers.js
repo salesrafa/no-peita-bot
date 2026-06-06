@@ -264,8 +264,31 @@ function handleRankingMisterioso() {
   return resposta.trim();
 }
 
+// Dado um array de datas de treino, retorna o total de dias unicos treinados
+// e a maior sequencia de dias consecutivos. Mesma logica de desempate usada
+// em calcularMetricasRankingComAB (total e, no empate, sequencia).
+function calcularTotalESequencia(datas) {
+  const diasUnicos = Array.from(
+    new Set(datas.map(d =>
+      new Date(d.getFullYear(), d.getMonth(), d.getDate()).toDateString()
+    ))
+  ).map(s => new Date(s)).sort((a, b) => a - b);
+
+  let maiorSeq = 0, atualSeq = 0, anterior = null;
+  for (const d of diasUnicos) {
+    if (anterior && diasEntreDatas(anterior, d) === 1) {
+      atualSeq += 1;
+    } else {
+      atualSeq = 1;
+    }
+    maiorSeq = Math.max(maiorSeq, atualSeq);
+    anterior = d;
+  }
+
+  return { total: diasUnicos.length, sequencia: maiorSeq };
+}
+
 function handleCampeoes() {
-  //TODO Implementar empate
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const campeoesSheet = ss.getSheetByName("campeoes");
   const treinosSheet = ss.getSheetByName("treinos");
@@ -294,7 +317,7 @@ function handleCampeoes() {
 
   // 3. VITÓRIAS AUTOMÁTICAS (ranking por mês)
   const treinos = treinosSheet.getDataRange().getValues();
-  const porMesAno = {}; // "mm/yyyy" → { numero: qtd }
+  const porMesAno = {}; // "mm/yyyy" → { numero: [datas] }
 
   for (let i = 1; i < treinos.length; i++) {
     const [numero, nome, dataStr] = treinos[i];
@@ -303,9 +326,9 @@ function handleCampeoes() {
     const chave = `${("0" + (data.getMonth() + 1)).slice(-2)}/${data.getFullYear()}`;
 
     if (!porMesAno[chave]) porMesAno[chave] = {};
-    if (!porMesAno[chave][numero]) porMesAno[chave][numero] = 0;
+    if (!porMesAno[chave][numero]) porMesAno[chave][numero] = [];
 
-    porMesAno[chave][numero]++;
+    porMesAno[chave][numero].push(data);
     mapaNumeros[numero] = nome;
   }
 
@@ -315,8 +338,8 @@ function handleCampeoes() {
   const mesAtual = agora.getMonth();
   const anoAtual = agora.getFullYear();
 
-  // para cada mês completo, pega o campeão
-  Object.entries(porMesAno).forEach(([mesAno, ranking]) => {
+  // para cada mês completo, pega o(s) campeão(ões)
+  Object.entries(porMesAno).forEach(([mesAno, atletas]) => {
     const [mesStr, anoStr] = mesAno.split("/");
     const mes = parseInt(mesStr, 10) - 1;
     const ano = parseInt(anoStr, 10);
@@ -324,10 +347,28 @@ function handleCampeoes() {
     // ignora o mês atual
     if (mes === mesAtual && ano === anoAtual) return;
 
-    const campeao = Object.entries(ranking).sort((a, b) => b[1] - a[1])[0];
-    const numero = campeao[0];
-    if (!vitoriasGeradas[numero]) vitoriasGeradas[numero] = 0;
-    vitoriasGeradas[numero]++;
+    // métricas por atleta: dias únicos treinados + maior sequência
+    const metricas = Object.entries(atletas).map(([numero, datas]) => {
+      const { total, sequencia } = calcularTotalESequencia(datas);
+      return { numero, total, sequencia };
+    });
+
+    // ordena por total e, no empate, por sequência
+    metricas.sort((a, b) => {
+      if (b.total !== a.total) return b.total - a.total;
+      return b.sequencia - a.sequencia;
+    });
+
+    // campeão(ões) do mês: todos empatados em total E sequência com o topo
+    const topo = metricas[0];
+    const campeoesDoMes = metricas.filter(m =>
+      m.total === topo.total && m.sequencia === topo.sequencia
+    );
+
+    campeoesDoMes.forEach(({ numero }) => {
+      if (!vitoriasGeradas[numero]) vitoriasGeradas[numero] = 0;
+      vitoriasGeradas[numero]++;
+    });
   });
 
   // 4. SOMAR TUDO
