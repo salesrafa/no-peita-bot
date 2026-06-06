@@ -414,6 +414,12 @@ function handleRetroativo(e) {
     return "❌ Data inválida. Use DD/MM/AAAA.";
   }
 
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  if (data.getTime() > hoje.getTime()) {
+    return "❌ Não dá pra registrar treino em data futura.";
+  }
+
   const usuario = getUsuarioPorIdentificador(identificador);
   if (!usuario) {
     return "❌ Usuário não encontrado. Use /cadastro Seu Nome.";
