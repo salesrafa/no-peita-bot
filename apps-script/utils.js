@@ -280,7 +280,14 @@ function formatarRanking(ranking, titulo, mostrarBicho) {
     texto += `${r.rank} - ${medal}*${r.nome}* - ${r.total} treino(s) - 🔥 ${r.sequencia}${bicho}\n`;
   });
 
-  return texto.trim();
+  let resultado = texto.trim();
+
+  // Dica do bicho só quando os selos estão sendo exibidos (rankings mensais).
+  if (mostrarBicho) {
+    resultado += `\n\n🐉 Use /eu para entender seu bicho do mês.`;
+  }
+
+  return resultado;
 }
 
 function aplicarColocacaoComEmpate(linhas) {
