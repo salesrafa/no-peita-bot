@@ -493,7 +493,8 @@ function handlePontuar(e) {
   }
 
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("treinos");
-  sheet.appendRow([usuario.uuid || usuario.id_whatsapp, usuario.nome, hoje]);
+  // col D = id da mensagem do WhatsApp (pra apagar depois citando a mensagem)
+  sheet.appendRow([usuario.uuid || usuario.id_whatsapp, usuario.nome, hoje, e.parameter.MsgId || ""]);
 
   return "✅ Treino registrado com sucesso!";
 }
@@ -543,7 +544,8 @@ function handleRetroativo(e) {
   }
 
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("treinos");
-  sheet.appendRow([usuario.uuid || usuario.id_whatsapp, usuario.nome, data]);
+  // col D = id da mensagem do WhatsApp (pra apagar depois citando a mensagem)
+  sheet.appendRow([usuario.uuid || usuario.id_whatsapp, usuario.nome, data, e.parameter.MsgId || ""]);
 
   return `✅ Treino registrado em ${Utilities.formatDate(
     data,
@@ -760,6 +762,46 @@ function setMetaAnual(uuid, ano, valor) {
   sheet.appendRow([uuid, ano, valor]);
 }
 
+// /apagar (apenas admins): apaga um treino. O admin precisa RESPONDER (citar)
+// a mensagem de /pontuar do treino; o Node envia o id dessa mensagem em
+// QuotedMsgId, e a gente acha a linha em "treinos" com esse id (coluna D).
+function handleApagarTreino(e) {
+  const usuario = getUsuarioPorIdentificador(e.parameter.From || "");
+  if (!usuario) {
+    return "🚫 Você ainda não está cadastrado.";
+  }
+  if (String(usuario.role || "").toLowerCase() !== "admin") {
+    return "🔒 Só admins podem apagar treinos.";
+  }
+
+  const quotedId = String(e.parameter.QuotedMsgId || "").trim();
+  if (!quotedId) {
+    return "↩️ Para apagar, *responda* (cite) a mensagem de /pontuar do treino e mande /apagar.";
+  }
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("treinos");
+  if (!sheet || sheet.getLastRow() <= 1) {
+    return "❌ Nenhum treino encontrado.";
+  }
+
+  const dados = sheet.getDataRange().getValues();
+  const COL_MSGID = 3; // coluna D
+  for (let i = 1; i < dados.length; i++) {
+    if (String(dados[i][COL_MSGID] || "").trim() !== quotedId) continue;
+
+    const nome = dados[i][1];
+    const data = dados[i][2];
+    const dataFmt = data
+      ? Utilities.formatDate(new Date(data), "GMT-3", "dd/MM/yyyy")
+      : "?";
+    sheet.deleteRow(i + 1);
+    return `🗑️ Treino de ${nome} em ${dataFmt} apagado.`;
+  }
+
+  return "❌ Não achei um treino ligado a essa mensagem. Cite a mensagem de /pontuar original (a partir de agora os treinos guardam esse vínculo).";
+}
+
 function handleAjuda() {
   let texto = `🤖 *Ajuda — Comandos do Bot*\n`;
   texto += `━━━━━━━━━━━━━━━━━━\n\n`;
@@ -774,6 +816,9 @@ function handleAjuda() {
 
   texto += `• /retroativo DD/MM/AAAA\n`;
   texto += `  Registra um treino em uma data passada.\n\n`;
+
+  texto += `• /apagar (só admins)\n`;
+  texto += `  Responda a mensagem de /pontuar do treino e mande /apagar.\n\n`;
 
   texto += `• /hoje\n`;
   texto += `  Mostra quem já treinou hoje.\n\n`;

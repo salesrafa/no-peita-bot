@@ -11,6 +11,21 @@ export async function handleMessage(msg: Message, client: Client, ultimaQr: stri
     params.append('Body', msg.body);
     params.append('From', sender);
 
+    // Id da própria mensagem — guardado junto do treino para permitir apagá-lo
+    // depois citando a mensagem de /pontuar.
+    params.append('MsgId', msg.id?._serialized ?? '');
+
+    // Quando a mensagem é uma resposta (citação), envia o id da mensagem citada
+    // — usado pelo /apagar (admin cita o /pontuar do treino a remover).
+    if (msg.hasQuotedMsg) {
+      try {
+        const quoted = await msg.getQuotedMessage();
+        params.append('QuotedMsgId', quoted?.id?._serialized ?? '');
+      } catch (err) {
+        console.error('Não foi possível obter a mensagem citada:', err);
+      }
+    }
+
     const response = await axios.post(url, params, { headers: header });
 
     (client as any).sendSeen = async () => {};
