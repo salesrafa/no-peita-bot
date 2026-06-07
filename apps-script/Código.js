@@ -48,6 +48,9 @@ function doPost(e) {
     case '/pontuar':
       responseText = handlePontuar(e);
       break;
+    case '/apagar':
+      responseText = handleApagarTreino(e);
+      break;
     case '/anografico':
       responseText = handleRankingAnoGrafico(e);
       break;
