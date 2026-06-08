@@ -324,8 +324,8 @@ function aplicarColocacaoComEmpate(linhas) {
 function gerarRankingPorPeriodo(dataInicio, dataFim, filtroDataFn) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-  const sheetTreinos = ss.getSheetByName("treinos");
-  const sheetAB = ss.getSheetByName("treinos-AB");
+  const sheetTreinos = ss.getSheetByName(ABAS.TREINOS);
+  const sheetAB = ss.getSheetByName(ABAS.TREINOS_AB);
 
   const dadosTreinos = sheetTreinos.getDataRange().getValues();
   const dadosAB = sheetAB ? sheetAB.getDataRange().getValues() : [];
@@ -432,30 +432,25 @@ function calcularMetricasRankingComAB(porPessoa) {
 
 function getUsuarioPorIdentificador(identificador) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName("usuarios");
+  const sheet = ss.getSheetByName(ABAS.USUARIOS);
   if (!sheet) return null;
 
   const dados = sheet.getDataRange().getValues();
-  const COL_ID = 0;           // coluna A -> id_whatsapp (lid)
-  const COL_NOME = 1;         // coluna B -> nome
-  const COL_ROLE = 3;         // coluna D -> role
-  const COL_NUMERO_REAL = 4;  // coluna E -> número real (backup)
-  const COL_UUID = 5;         // coluna F -> uuid canônico
 
   for (let i = 1; i < dados.length; i++) {
     const linha = dados[i];
-    const id = String(linha[COL_ID]).trim();
-    const numeroReal = String(linha[COL_NUMERO_REAL]).trim();
+    const id = String(linha[USUARIO.ID]).trim();
+    const numeroReal = String(linha[USUARIO.NUMERO]).trim();
 
     if ((id === '') || (!id && !numeroReal)) continue;
 
     if (identificador === id || identificador === numeroReal) {
       return {
-        id_whatsapp: linha[COL_ID],
-        nome: linha[COL_NOME],
-        role: linha[COL_ROLE],
-        numero: linha[COL_NUMERO_REAL],
-        uuid: String(linha[COL_UUID] || "").trim(),
+        id_whatsapp: linha[USUARIO.ID],
+        nome: linha[USUARIO.NOME],
+        role: linha[USUARIO.ROLE],
+        numero: linha[USUARIO.NUMERO],
+        uuid: String(linha[USUARIO.UUID] || "").trim(),
         linhaCompleta: linha,
         indiceLinha: i + 1, // para atualizações futuras (1-based)
       };
@@ -482,18 +477,17 @@ function resolverUuid(identificador) {
 // próprio uuid) ao uuid canônico. Chamado uma vez por leitura em lote.
 function getMapasIdentidade() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName("usuarios");
+  const sheet = ss.getSheetByName(ABAS.USUARIOS);
   const porChave = {}; // id_whatsapp | numero | uuid -> uuid
   const porNome = {};  // nome -> uuid (fallback p/ treinos-AB e linhas legadas)
   if (!sheet) return { porChave, porNome };
 
   const dados = sheet.getDataRange().getValues();
-  const COL_ID = 0, COL_NOME = 1, COL_NUMERO = 4, COL_UUID = 5;
   for (let i = 1; i < dados.length; i++) {
-    const id = String(dados[i][COL_ID] || "").trim();
-    const nome = String(dados[i][COL_NOME] || "").trim();
-    const numero = String(dados[i][COL_NUMERO] || "").trim();
-    const uuid = String(dados[i][COL_UUID] || "").trim();
+    const id = String(dados[i][USUARIO.ID] || "").trim();
+    const nome = String(dados[i][USUARIO.NOME] || "").trim();
+    const numero = String(dados[i][USUARIO.NUMERO] || "").trim();
+    const uuid = String(dados[i][USUARIO.UUID] || "").trim();
     if (!uuid) continue;
     porChave[uuid] = uuid;
     if (id) porChave[id] = uuid;
@@ -519,7 +513,7 @@ function resolverUuidTreino(valorCol0, nome, mapas) {
 // Mapa uuid -> nome canônico (coluna B de "usuarios"), para exibição.
 function getMapaUuidParaNome() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName("usuarios");
+  const sheet = ss.getSheetByName(ABAS.USUARIOS);
   const mapa = {};
   if (!sheet) return mapa;
   const dados = sheet.getDataRange().getValues();
@@ -578,7 +572,7 @@ function jaTreinouNaData(identificador, data) {
   const mapas = getMapasIdentidade();
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName("treinos");
+  const sheet = ss.getSheetByName(ABAS.TREINOS);
   if (!sheet) return false;
 
   const dados = sheet.getDataRange().getValues();
