@@ -324,7 +324,7 @@ function aplicarColocacaoComEmpate(linhas) {
 function gerarRankingPorPeriodo(dataInicio, dataFim, filtroDataFn) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-  const sheetAB = ss.getSheetByName(ABAS.TREINOS_AB);
+  const sheetAB = ss.getSheetByName(SHEETS.WORKOUTS_AB);
   const dadosAB = sheetAB ? sheetAB.getDataRange().getValues() : [];
 
   const mapas = getMapasIdentidade();
@@ -423,25 +423,25 @@ function calcularMetricasRankingComAB(porPessoa) {
 
 function getUsuarioPorIdentificador(identificador) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(ABAS.USUARIOS);
+  const sheet = ss.getSheetByName(SHEETS.USERS);
   if (!sheet) return null;
 
   const dados = sheet.getDataRange().getValues();
 
   for (let i = 1; i < dados.length; i++) {
     const linha = dados[i];
-    const id = String(linha[USUARIO.ID]).trim();
-    const numeroReal = String(linha[USUARIO.NUMERO]).trim();
+    const id = String(linha[USER_COL.ID]).trim();
+    const numeroReal = String(linha[USER_COL.NUMBER]).trim();
 
     if ((id === '') || (!id && !numeroReal)) continue;
 
     if (identificador === id || identificador === numeroReal) {
       return {
-        id_whatsapp: linha[USUARIO.ID],
-        nome: linha[USUARIO.NOME],
-        role: linha[USUARIO.ROLE],
-        numero: linha[USUARIO.NUMERO],
-        uuid: String(linha[USUARIO.UUID] || "").trim(),
+        id_whatsapp: linha[USER_COL.ID],
+        nome: linha[USER_COL.NAME],
+        role: linha[USER_COL.ROLE],
+        numero: linha[USER_COL.NUMBER],
+        uuid: String(linha[USER_COL.UUID] || "").trim(),
         linhaCompleta: linha,
         indiceLinha: i + 1, // para atualizações futuras (1-based)
       };
@@ -468,17 +468,17 @@ function resolverUuid(identificador) {
 // próprio uuid) ao uuid canônico. Chamado uma vez por leitura em lote.
 function getMapasIdentidade() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(ABAS.USUARIOS);
+  const sheet = ss.getSheetByName(SHEETS.USERS);
   const porChave = {}; // id_whatsapp | numero | uuid -> uuid
   const porNome = {};  // nome -> uuid (fallback p/ treinos-AB e linhas legadas)
   if (!sheet) return { porChave, porNome };
 
   const dados = sheet.getDataRange().getValues();
   for (let i = 1; i < dados.length; i++) {
-    const id = String(dados[i][USUARIO.ID] || "").trim();
-    const nome = String(dados[i][USUARIO.NOME] || "").trim();
-    const numero = String(dados[i][USUARIO.NUMERO] || "").trim();
-    const uuid = String(dados[i][USUARIO.UUID] || "").trim();
+    const id = String(dados[i][USER_COL.ID] || "").trim();
+    const nome = String(dados[i][USER_COL.NAME] || "").trim();
+    const numero = String(dados[i][USER_COL.NUMBER] || "").trim();
+    const uuid = String(dados[i][USER_COL.UUID] || "").trim();
     if (!uuid) continue;
     porChave[uuid] = uuid;
     if (id) porChave[id] = uuid;
@@ -504,13 +504,13 @@ function resolverUuidTreino(valorCol0, nome, mapas) {
 // Mapa uuid -> nome canônico (coluna B de "usuarios"), para exibição.
 function getMapaUuidParaNome() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(ABAS.USUARIOS);
+  const sheet = ss.getSheetByName(SHEETS.USERS);
   const mapa = {};
   if (!sheet) return mapa;
   const dados = sheet.getDataRange().getValues();
   for (let i = 1; i < dados.length; i++) {
-    const nome = String(dados[i][USUARIO.NOME] || "").trim();
-    const uuid = String(dados[i][USUARIO.UUID] || "").trim();
+    const nome = String(dados[i][USER_COL.NAME] || "").trim();
+    const uuid = String(dados[i][USER_COL.UUID] || "").trim();
     if (uuid && nome) mapa[uuid] = nome;
   }
   return mapa;
@@ -523,15 +523,15 @@ function getMapaUuidParaNome() {
 // `mapas` é opcional: passe getMapasIdentidade() já calculado para evitar reler
 // a aba "usuarios".
 function lerTreinos(mapas) {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABAS.TREINOS);
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.WORKOUTS);
   if (!sheet) return [];
   mapas = mapas || getMapasIdentidade();
   const dados = sheet.getDataRange().getValues();
   const treinos = [];
   for (let i = 1; i < dados.length; i++) {
-    const col0 = dados[i][TREINO.UUID];
-    const nome = dados[i][TREINO.NOME];
-    const dataRaw = dados[i][TREINO.DATA];
+    const col0 = dados[i][WORKOUT_COL.UUID];
+    const nome = dados[i][WORKOUT_COL.NAME];
+    const dataRaw = dados[i][WORKOUT_COL.DATE];
     if ((!col0 && !nome) || !dataRaw) continue;
     treinos.push({
       uuid: resolverUuidTreino(col0, nome, mapas),

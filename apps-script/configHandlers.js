@@ -1,6 +1,6 @@
 function getAdmins() {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName(ABAS.USUARIOS);
+    const sheet = ss.getSheetByName(SHEETS.USERS);
     const dados = sheet.getDataRange().getValues();
 
     let admins = [];
@@ -21,7 +21,7 @@ function precisaAtualizarCaches() {
   const mesAtual = hoje.getMonth() + 1; // 1–12
   const pendentes = [];
 
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABAS.LUA_CHEIA);
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.FULL_MOON);
   if (!sheet) {
     // se aba não existe, cria e solicita mês atual
     pendentes.push({ cache: "lua_cheia", ano: anoAtual, mes: String(mesAtual).padStart(2, '0') });
@@ -89,8 +89,8 @@ function atualizarCacheLuaCheia(e) {
     return `sucesso: false, erro: "Parâmetros inválidos"`;
   }
 
-  const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABAS.LUA_CHEIA) ||
-    SpreadsheetApp.getActiveSpreadsheet().insertSheet(ABAS.LUA_CHEIA);
+  const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.FULL_MOON) ||
+    SpreadsheetApp.getActiveSpreadsheet().insertSheet(SHEETS.FULL_MOON);
 
   const linhaInicial = aba.getLastRow() + 1;
   const linhas = datas.map(data => [ano, mes, data]);
