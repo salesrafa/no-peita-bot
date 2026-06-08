@@ -1,29 +1,30 @@
 /**
- * Constantes e helpers compartilhados pelo projeto.
- * (No Apps Script todos os .gs dividem o mesmo escopo global, então estes
- *  nomes ficam disponíveis em qualquer arquivo.)
+ * Shared constants and helpers.
+ * (In Apps Script all .gs files share a single global scope, so these names
+ *  are available from any file.)
  */
 
-// Nomes das abas da planilha — fonte única de verdade (evita strings mágicas).
-const ABAS = {
-  USUARIOS: "usuarios",
-  TREINOS: "treinos",
-  TREINOS_AB: "treinos-AB",
+// Spreadsheet tab names — single source of truth (avoids magic strings).
+// Values stay in pt-BR because they are the real tab names in the spreadsheet.
+const SHEETS = {
+  USERS: "usuarios",
+  WORKOUTS: "treinos",
+  WORKOUTS_AB: "treinos-AB",
   TICKETS: "tickets",
-  CAMPEOES: "campeoes",
-  METAS: "metas",
-  LUA_CHEIA: "lua_cheia",
-  MENSAGENS: "mensagens",
+  CHAMPIONS: "campeoes",
+  GOALS: "metas",
+  FULL_MOON: "lua_cheia",
+  MESSAGES: "mensagens",
 };
 
-// Índices de coluna (0-based) das principais abas — documenta o schema.
-const TREINO = { UUID: 0, NOME: 1, DATA: 2, MSG_ID: 3 };
-const USUARIO = { ID: 0, NOME: 1, DATA: 2, ROLE: 3, NUMERO: 4, UUID: 5, META: 6 };
+// Column indexes (0-based) of the main sheets — documents the schema.
+const WORKOUT_COL = { UUID: 0, NAME: 1, DATE: 2, MSG_ID: 3 };
+const USER_COL = { ID: 0, NAME: 1, DATE: 2, ROLE: 3, NUMBER: 4, UUID: 5, GOAL: 6 };
 
-// Mensagens reutilizadas.
-const MSG_NAO_CADASTRADO = "🚫 Você ainda não está cadastrado. Use: /cadastro Seu Nome";
+// Reused user-facing message (kept in pt-BR — shown to the user).
+const MSG_NOT_REGISTERED = "🚫 Você ainda não está cadastrado. Use: /cadastro Seu Nome";
 
-// True se o usuário (objeto de getUsuarioPorIdentificador) tem papel de admin.
-function isAdmin(usuario) {
-  return !!usuario && String(usuario.role || "").toLowerCase() === "admin";
+// True if the user (object from getUserByIdentifier) has the admin role.
+function isAdmin(user) {
+  return !!user && String(user.role || "").toLowerCase() === "admin";
 }

@@ -76,7 +76,7 @@ function handleRankingOlimpiada(e) {
 
 function handleTicketStatus(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(ABAS.TICKETS);
+  const sheet = ss.getSheetByName(SHEETS.TICKETS);
 
   if (!sheet || sheet.getLastRow() <= 1) {
     return "❌ Nenhum ticket encontrado.";
@@ -114,7 +114,7 @@ function handleTicketStatus(e) {
 
 function handleTicket(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(ABAS.TICKETS) || ss.insertSheet(ABAS.TICKETS);
+  const sheet = ss.getSheetByName(SHEETS.TICKETS) || ss.insertSheet(SHEETS.TICKETS);
 
   if (sheet.getLastRow() === 0) {
     sheet.appendRow(["numero", "nome", "id", "mensagem", "status"]);
@@ -125,7 +125,7 @@ function handleTicket(e) {
   // const nome = getNomeUsuario(identificador);
 
   if (!usuario) {
-    return MSG_NAO_CADASTRADO;
+    return MSG_NOT_REGISTERED;
   }
 
   const nome = usuario.nome;
@@ -161,11 +161,11 @@ function emojiStatusTicket(status) {
 // resolvido, ignorado...). Cada um aparece com o status atual.
 function handleMeusTickets(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(ABAS.TICKETS);
+  const sheet = ss.getSheetByName(SHEETS.TICKETS);
 
   const usuario = getUsuarioPorIdentificador(e.parameter.From || "");
   if (!usuario) {
-    return MSG_NAO_CADASTRADO;
+    return MSG_NOT_REGISTERED;
   }
   if (!sheet || sheet.getLastRow() <= 1) {
     return "🎫 Você ainda não abriu nenhum ticket.\nUse: /ticket sua mensagem";
@@ -228,7 +228,7 @@ function handleHoje() {
 
 function handleRankingMisterioso() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const luaCheiaSheet = ss.getSheetByName(ABAS.LUA_CHEIA);
+  const luaCheiaSheet = ss.getSheetByName(SHEETS.FULL_MOON);
 
   const hoje = new Date();
 
@@ -320,7 +320,7 @@ function calcularTotalESequencia(datas) {
 
 function handleCampeoes() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const campeoesSheet = ss.getSheetByName(ABAS.CAMPEOES);
+  const campeoesSheet = ss.getSheetByName(SHEETS.CHAMPIONS);
 
   const mapas = getMapasIdentidade();
 
@@ -422,7 +422,7 @@ function handleCampeoes() {
 
 function handleMessageLog(e, comando) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const mensagensSheet = ss.getSheetByName(ABAS.MENSAGENS);
+  const mensagensSheet = ss.getSheetByName(SHEETS.MESSAGES);
 
   const identificador = e.parameter.From || "";
   const mensagem = e.parameter.Body || "";
@@ -455,7 +455,7 @@ function handleCadastro(e) {
 
   const nome = mensagem.substring(10).trim();
   const uuid = Utilities.getUuid(); // identidade interna estável
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABAS.USUARIOS);
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.USERS);
   // Colunas: A id_whatsapp | B nome | C data | D role | E numero | F uuid
   sheet.appendRow([idenficador, nome, timestamp, "", "", uuid]);
   return `✅ Cadastro realizado com sucesso, ${nome}!`;
@@ -474,7 +474,7 @@ function handlePontuar(e) {
     return "⚠️ Você já registrou um treino hoje.";
   }
 
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABAS.TREINOS);
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.WORKOUTS);
   // col D = id da mensagem do WhatsApp (pra apagar depois citando a mensagem)
   sheet.appendRow([usuario.uuid || usuario.id_whatsapp, usuario.nome, hoje, e.parameter.MsgId || ""]);
 
@@ -525,7 +525,7 @@ function handleRetroativo(e) {
     return "⚠️ Você já registrou um treino nessa data.";
   }
 
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABAS.TREINOS);
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.WORKOUTS);
   // col D = id da mensagem do WhatsApp (pra apagar depois citando a mensagem)
   sheet.appendRow([usuario.uuid || usuario.id_whatsapp, usuario.nome, data, e.parameter.MsgId || ""]);
 
@@ -541,7 +541,7 @@ function handleEu(e) {
   const usuario = getUsuarioPorIdentificador(idenficador);
 
   if (!usuario) {
-    return MSG_NAO_CADASTRADO;
+    return MSG_NOT_REGISTERED;
   }
   const uuidUsuario = usuario.uuid || usuario.id_whatsapp;
   const agora = new Date();
@@ -583,7 +583,7 @@ function handleEu(e) {
 
 // Meta anual padrão (treinos no ano) quando a pessoa não definiu a sua.
 // Ajustável aqui; cada um pode sobrescrever com /meta N.
-const META_ANUAL_PADRAO = 150;
+const DEFAULT_ANNUAL_GOAL = 150;
 
 // /meta        -> mostra o progresso da meta anual (com barra e projeção)
 // /meta 200    -> define a meta anual pessoal do ano corrente (aba "metas")
@@ -591,7 +591,7 @@ function handleMeta(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const usuario = getUsuarioPorIdentificador(e.parameter.From || "");
   if (!usuario) {
-    return MSG_NAO_CADASTRADO;
+    return MSG_NOT_REGISTERED;
   }
 
   const partes = (e.parameter.Body || "").trim().split(/\s+/);
@@ -614,7 +614,7 @@ function handleMeta(e) {
   const agora = new Date();
   const ano = agora.getFullYear();
   const metaInfo = getMetaAnual(usuario.uuid || usuario.id_whatsapp, ano);
-  const meta = metaInfo ? metaInfo.valor : META_ANUAL_PADRAO;
+  const meta = metaInfo ? metaInfo.valor : DEFAULT_ANNUAL_GOAL;
   const herdada = metaInfo && metaInfo.ano < ano; // meta veio de um ano anterior
   const total = contarTreinosNoAno(usuario.uuid || usuario.id_whatsapp, ano);
 
@@ -684,9 +684,9 @@ function barraProgresso(valor, total) {
 // Colunas: A uuid | B ano | C meta
 function getSheetMetas() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet = ss.getSheetByName(ABAS.METAS);
+  let sheet = ss.getSheetByName(SHEETS.GOALS);
   if (!sheet) {
-    sheet = ss.insertSheet(ABAS.METAS);
+    sheet = ss.insertSheet(SHEETS.GOALS);
   }
   if (sheet.getLastRow() === 0) {
     sheet.appendRow(["uuid", "ano", "meta"]);
@@ -699,7 +699,7 @@ function getSheetMetas() {
 // da meta encontrada (ano < alvo indica herança), ou null se nunca definiu.
 function getMetaAnual(uuid, ano) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(ABAS.METAS);
+  const sheet = ss.getSheetByName(SHEETS.GOALS);
   if (!sheet || sheet.getLastRow() <= 1) return null;
   const dados = sheet.getDataRange().getValues();
   let melhor = null; // { valor, ano } com o maior ano <= alvo
@@ -735,7 +735,7 @@ function setMetaAnual(uuid, ano, valor) {
 function handleApagarTreino(e) {
   const usuario = getUsuarioPorIdentificador(e.parameter.From || "");
   if (!usuario) {
-    return MSG_NAO_CADASTRADO;
+    return MSG_NOT_REGISTERED;
   }
   if (!isAdmin(usuario)) {
     return "🔒 Só admins podem apagar treinos.";
@@ -747,17 +747,17 @@ function handleApagarTreino(e) {
   }
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(ABAS.TREINOS);
+  const sheet = ss.getSheetByName(SHEETS.WORKOUTS);
   if (!sheet || sheet.getLastRow() <= 1) {
     return "❌ Nenhum treino encontrado.";
   }
 
   const dados = sheet.getDataRange().getValues();
   for (let i = 1; i < dados.length; i++) {
-    if (String(dados[i][TREINO.MSG_ID] || "").trim() !== quotedId) continue;
+    if (String(dados[i][WORKOUT_COL.MSG_ID] || "").trim() !== quotedId) continue;
 
-    const nome = dados[i][TREINO.NOME];
-    const data = dados[i][TREINO.DATA];
+    const nome = dados[i][WORKOUT_COL.NAME];
+    const data = dados[i][WORKOUT_COL.DATE];
     const dataFmt = data
       ? formatarData(new Date(data))
       : "?";
