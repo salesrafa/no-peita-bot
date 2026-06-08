@@ -201,30 +201,18 @@ function handleMeusTickets(e) {
 }
 
 function handleHoje() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(ABAS.TREINOS);
-  const dados = sheet.getDataRange().getValues();
+  const hojeStr = formatarData(new Date()); // formato dd/MM/yyyy
 
-  const hoje = new Date();
-  const hojeStr = formatarData(hoje); // formato dd/MM/yyyy
-
-  // Deduplica por uuid canônico (resolvido da coluna 0), nao por nome: assim
-  // dois usuarios com o mesmo nome contam como pessoas diferentes. O nome
-  // exibido e o que foi gravado na linha do treino.
-  const mapas = getMapasIdentidade();
+  // Deduplica por uuid canônico, nao por nome: assim dois usuarios com o mesmo
+  // nome contam como pessoas diferentes. O nome exibido e o que foi gravado na
+  // linha do treino.
   const treinaramHoje = new Map(); // uuid -> nome
 
-  for (let i = 1; i < dados.length; i++) {
-    const [id, nome, dataStr] = dados[i];
-    if ((!id && !nome) || !dataStr) continue;
-
-    const data = new Date(dataStr);
-    const dataFormatada = formatarData(data);
-
-    if (dataFormatada === hojeStr) {
-      treinaramHoje.set(resolverUuidTreino(id, nome, mapas), nome);
+  lerTreinos().forEach(t => {
+    if (formatarData(t.data) === hojeStr) {
+      treinaramHoje.set(t.uuid, t.nome);
     }
-  }
+  });
 
   if (treinaramHoje.size === 0) {
     return "🕒 Ninguém registrou treino hoje ainda.\nBora ser o primeiro? 💪";
@@ -333,7 +321,6 @@ function calcularTotalESequencia(datas) {
 function handleCampeoes() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const campeoesSheet = ss.getSheetByName(ABAS.CAMPEOES);
-  const treinosSheet = ss.getSheetByName(ABAS.TREINOS);
 
   const mapas = getMapasIdentidade();
 
@@ -350,22 +337,17 @@ function handleCampeoes() {
   }
 
   // 2. VITÓRIAS AUTOMÁTICAS (ranking por mês)
-  const treinos = treinosSheet.getDataRange().getValues();
   const porMesAno = {}; // "mm/yyyy" → { uuid: [datas] }
 
-  for (let i = 1; i < treinos.length; i++) {
-    const [col0, nome, dataStr] = treinos[i];
-    if ((!col0 && !nome) || !dataStr) continue;
-    const uuid = resolverUuidTreino(col0, nome, mapas);
-    const data = new Date(dataStr);
-    const chave = `${("0" + (data.getMonth() + 1)).slice(-2)}/${data.getFullYear()}`;
+  lerTreinos(mapas).forEach(t => {
+    const chave = `${("0" + (t.data.getMonth() + 1)).slice(-2)}/${t.data.getFullYear()}`;
 
     if (!porMesAno[chave]) porMesAno[chave] = {};
-    if (!porMesAno[chave][uuid]) porMesAno[chave][uuid] = [];
+    if (!porMesAno[chave][t.uuid]) porMesAno[chave][t.uuid] = [];
 
-    porMesAno[chave][uuid].push(data);
-    if (!mapaNumeros[uuid] && nome) mapaNumeros[uuid] = nome;
-  }
+    porMesAno[chave][t.uuid].push(t.data);
+    if (!mapaNumeros[t.uuid] && t.nome) mapaNumeros[t.uuid] = t.nome;
+  });
 
   const vitoriasGeradas = {};
 
@@ -555,8 +537,6 @@ function handleRetroativo(e) {
 }
 
 function handleEu(e) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-
   const idenficador = e.parameter.From || "";
   const usuario = getUsuarioPorIdentificador(idenficador);
 
@@ -564,22 +544,17 @@ function handleEu(e) {
     return MSG_NAO_CADASTRADO;
   }
   const uuidUsuario = usuario.uuid || usuario.id_whatsapp;
-  const mapas = getMapasIdentidade();
-  const treinosSheet = ss.getSheetByName(ABAS.TREINOS);
   const agora = new Date();
   const mesAtual = agora.getMonth();
   const anoAtual = agora.getFullYear();
 
-  const treinos = treinosSheet.getDataRange().getValues();
-
-  const datas = treinos
-    .filter(row => {
-      const data = new Date(row[2]);
-      return resolverUuidTreino(row[0], row[1], mapas) === uuidUsuario &&
-        data.getMonth() === mesAtual &&
-        data.getFullYear() === anoAtual;
-    })
-    .map(row => formatarData(new Date(row[2])))
+  const datas = lerTreinos()
+    .filter(t =>
+      t.uuid === uuidUsuario &&
+      t.data.getMonth() === mesAtual &&
+      t.data.getFullYear() === anoAtual
+    )
+    .map(t => formatarData(t.data))
     .sort();
 
   const nomeMes = getNomeMesEmPortugues(mesAtual);
@@ -685,20 +660,12 @@ function handleMeta(e) {
 // Dedup por dia é redundante (o bot já limita 1/dia), mas protege contra
 // eventuais duplicatas legadas. Não inclui dados pré-bot (treinos-AB, 2025).
 function contarTreinosNoAno(uuidUsuario, ano) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(ABAS.TREINOS);
-  if (!sheet) return 0;
-  const mapas = getMapasIdentidade();
-  const dados = sheet.getDataRange().getValues();
   const dias = {};
-  for (let i = 1; i < dados.length; i++) {
-    const [col0, nome, dataStr] = dados[i];
-    if ((!col0 && !nome) || !dataStr) continue;
-    if (resolverUuidTreino(col0, nome, mapas) !== uuidUsuario) continue;
-    const d = new Date(dataStr);
-    if (d.getFullYear() !== ano) continue;
-    dias[`${d.getMonth()}-${d.getDate()}`] = true;
-  }
+  lerTreinos().forEach(t => {
+    if (t.uuid !== uuidUsuario) return;
+    if (t.data.getFullYear() !== ano) return;
+    dias[`${t.data.getMonth()}-${t.data.getDate()}`] = true;
+  });
   return Object.keys(dias).length;
 }
 

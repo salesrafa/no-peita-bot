@@ -324,10 +324,7 @@ function aplicarColocacaoComEmpate(linhas) {
 function gerarRankingPorPeriodo(dataInicio, dataFim, filtroDataFn) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-  const sheetTreinos = ss.getSheetByName(ABAS.TREINOS);
   const sheetAB = ss.getSheetByName(ABAS.TREINOS_AB);
-
-  const dadosTreinos = sheetTreinos.getDataRange().getValues();
   const dadosAB = sheetAB ? sheetAB.getDataRange().getValues() : [];
 
   const mapas = getMapasIdentidade();
@@ -348,19 +345,13 @@ function gerarRankingPorPeriodo(dataInicio, dataFim, filtroDataFn) {
   }
 
   // ---------- treinos diários (pós-bot) ----------
-  for (let i = 1; i < dadosTreinos.length; i++) {
-    const [col0, nome, dataStr] = dadosTreinos[i];
-    if ((!col0 && !nome) || !dataStr) continue;
+  lerTreinos(mapas).forEach(t => {
+    if (t.data < dataInicio || t.data > dataFim) return;
+    if (filtroDataFn && !filtroDataFn(t.data)) return;
+    if (!t.uuid) return;
 
-    const data = new Date(dataStr);
-    if (data < dataInicio || data > dataFim) continue;
-    if (filtroDataFn && !filtroDataFn(data)) continue;
-
-    const uuid = resolverUuidTreino(col0, nome, mapas);
-    if (!uuid) continue;
-
-    bucket(uuid, nome).datas.push(new Date(data));
-  }
+    bucket(t.uuid, t.nome).datas.push(new Date(t.data));
+  });
 
   // ---------- treinos agregados (pré-bot | SOMENTE 2025) ----------
   const ANO_AB = 2025;
@@ -518,11 +509,37 @@ function getMapaUuidParaNome() {
   if (!sheet) return mapa;
   const dados = sheet.getDataRange().getValues();
   for (let i = 1; i < dados.length; i++) {
-    const nome = String(dados[i][1] || "").trim();
-    const uuid = String(dados[i][5] || "").trim();
+    const nome = String(dados[i][USUARIO.NOME] || "").trim();
+    const uuid = String(dados[i][USUARIO.UUID] || "").trim();
     if (uuid && nome) mapa[uuid] = nome;
   }
   return mapa;
+}
+
+// Lê a aba "treinos" e devolve registros normalizados { uuid, nome, data },
+// com o uuid canônico já resolvido (id_whatsapp legado/uuid → uuid, fallback
+// por nome). Descarta linhas vazias e o cabeçalho. NÃO inclui "treinos-AB"
+// (pré-bot) nem o índice da linha — quem precisa disso (ex.: /apagar) lê direto.
+// `mapas` é opcional: passe getMapasIdentidade() já calculado para evitar reler
+// a aba "usuarios".
+function lerTreinos(mapas) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(ABAS.TREINOS);
+  if (!sheet) return [];
+  mapas = mapas || getMapasIdentidade();
+  const dados = sheet.getDataRange().getValues();
+  const treinos = [];
+  for (let i = 1; i < dados.length; i++) {
+    const col0 = dados[i][TREINO.UUID];
+    const nome = dados[i][TREINO.NOME];
+    const dataRaw = dados[i][TREINO.DATA];
+    if ((!col0 && !nome) || !dataRaw) continue;
+    treinos.push({
+      uuid: resolverUuidTreino(col0, nome, mapas),
+      nome: nome,
+      data: new Date(dataRaw),
+    });
+  }
+  return treinos;
 }
 
 function formatarData(data) {
@@ -569,13 +586,6 @@ function jaTreinouNaData(identificador, data) {
 
   // uuid canônico; cai para o id_whatsapp enquanto a migração não rodou.
   const uuidUsuario = usuario.uuid || usuario.id_whatsapp;
-  const mapas = getMapasIdentidade();
-
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName(ABAS.TREINOS);
-  if (!sheet) return false;
-
-  const dados = sheet.getDataRange().getValues();
 
   const dataRef = new Date(
     data.getFullYear(),
@@ -583,24 +593,14 @@ function jaTreinouNaData(identificador, data) {
     data.getDate()
   ).getTime();
 
-  for (let i = 1; i < dados.length; i++) {
-    const [idTreino, nomeTreino, dataStr] = dados[i];
-    if ((!idTreino && !nomeTreino) || !dataStr) continue;
-
-    // 🔑 compara pelo uuid canônico resolvido
-    if (resolverUuidTreino(idTreino, nomeTreino, mapas) !== uuidUsuario) continue;
-
-    const d = new Date(dataStr);
+  // 🔑 compara pelo uuid canônico resolvido (lerTreinos já resolve)
+  return lerTreinos().some(t => {
+    if (t.uuid !== uuidUsuario) return false;
     const dTime = new Date(
-      d.getFullYear(),
-      d.getMonth(),
-      d.getDate()
+      t.data.getFullYear(),
+      t.data.getMonth(),
+      t.data.getDate()
     ).getTime();
-
-    if (dTime === dataRef) {
-      return true;
-    }
-  }
-
-  return false;
+    return dTime === dataRef;
+  });
 }
