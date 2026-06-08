@@ -327,8 +327,8 @@ function gerarRankingPorPeriodo(dataInicio, dataFim, filtroDataFn) {
   const sheetAB = ss.getSheetByName(SHEETS.WORKOUTS_AB);
   const dadosAB = sheetAB ? sheetAB.getDataRange().getValues() : [];
 
-  const mapas = getMapasIdentidade();
-  const uuidParaNome = getMapaUuidParaNome();
+  const mapas = getIdentityMaps();
+  const uuidParaNome = getUuidToNameMap();
 
   const porPessoa = {}; // uuid -> { nome, datas: [], totalAB: number }
 
@@ -345,12 +345,12 @@ function gerarRankingPorPeriodo(dataInicio, dataFim, filtroDataFn) {
   }
 
   // ---------- treinos diários (pós-bot) ----------
-  lerTreinos(mapas).forEach(t => {
-    if (t.data < dataInicio || t.data > dataFim) return;
-    if (filtroDataFn && !filtroDataFn(t.data)) return;
+  readWorkouts(mapas).forEach(t => {
+    if (t.date < dataInicio || t.date > dataFim) return;
+    if (filtroDataFn && !filtroDataFn(t.date)) return;
     if (!t.uuid) return;
 
-    bucket(t.uuid, t.nome).datas.push(new Date(t.data));
+    bucket(t.uuid, t.name).datas.push(new Date(t.date));
   });
 
   // ---------- treinos agregados (pré-bot | SOMENTE 2025) ----------
@@ -374,7 +374,7 @@ function gerarRankingPorPeriodo(dataInicio, dataFim, filtroDataFn) {
       if (fimMes < dataInicio || inicioMes > dataFim) continue;
 
       // treinos-AB só têm nome; resolve por nome (fallback ao próprio nome).
-      const uuid = mapas.porNome[String(nome).trim()] || String(nome).trim();
+      const uuid = mapas.byName[String(nome).trim()] || String(nome).trim();
       bucket(uuid, nome).totalAB += Number(total);
     }
   }
@@ -421,29 +421,27 @@ function calcularMetricasRankingComAB(porPessoa) {
   return aplicarColocacaoComEmpate(linhas);
 }
 
-function getUsuarioPorIdentificador(identificador) {
+function getUserByIdentifier(identifier) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEETS.USERS);
   if (!sheet) return null;
 
-  const dados = sheet.getDataRange().getValues();
+  const rows = sheet.getDataRange().getValues();
 
-  for (let i = 1; i < dados.length; i++) {
-    const linha = dados[i];
-    const id = String(linha[USER_COL.ID]).trim();
-    const numeroReal = String(linha[USER_COL.NUMBER]).trim();
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const id = String(row[USER_COL.ID]).trim();
+    const realNumber = String(row[USER_COL.NUMBER]).trim();
 
-    if ((id === '') || (!id && !numeroReal)) continue;
+    if ((id === '') || (!id && !realNumber)) continue;
 
-    if (identificador === id || identificador === numeroReal) {
+    if (identifier === id || identifier === realNumber) {
       return {
-        id_whatsapp: linha[USER_COL.ID],
-        nome: linha[USER_COL.NAME],
-        role: linha[USER_COL.ROLE],
-        numero: linha[USER_COL.NUMBER],
-        uuid: String(linha[USER_COL.UUID] || "").trim(),
-        linhaCompleta: linha,
-        indiceLinha: i + 1, // para atualizações futuras (1-based)
+        whatsappId: row[USER_COL.ID],
+        name: row[USER_COL.NAME],
+        role: row[USER_COL.ROLE],
+        number: row[USER_COL.NUMBER],
+        uuid: String(row[USER_COL.UUID] || "").trim(),
       };
     }
   }
@@ -451,95 +449,95 @@ function getUsuarioPorIdentificador(identificador) {
   return null;
 }
 
-function getNomeUsuario(identificador) {
-  const usuario = getUsuarioPorIdentificador(identificador);
-  return usuario ? usuario.nome : null;
+function getUserName(identifier) {
+  const user = getUserByIdentifier(identifier);
+  return user ? user.name : null;
 }
 
-// Resolve o uuid canônico de um usuário a partir de qualquer identificador
-// do WhatsApp (lid ou número). Retorna null se não cadastrado.
-function resolverUuid(identificador) {
-  const usuario = getUsuarioPorIdentificador(identificador);
-  return usuario ? usuario.uuid : null;
+// Resolves a user's canonical uuid from any WhatsApp identifier (lid or
+// number). Returns null if not registered.
+function resolveUuid(identifier) {
+  const user = getUserByIdentifier(identifier);
+  return user ? user.uuid : null;
 }
 
-// Constrói mapas de identidade a partir da aba "usuarios", usados para resolver
-// qualquer chave de linha de treino (id_whatsapp legado, número, nome ou o
-// próprio uuid) ao uuid canônico. Chamado uma vez por leitura em lote.
-function getMapasIdentidade() {
+// Builds identity maps from the "usuarios" sheet, used to resolve any workout
+// row key (legacy id_whatsapp, number, name or the uuid itself) to the
+// canonical uuid. Called once per batch read.
+function getIdentityMaps() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEETS.USERS);
-  const porChave = {}; // id_whatsapp | numero | uuid -> uuid
-  const porNome = {};  // nome -> uuid (fallback p/ treinos-AB e linhas legadas)
-  if (!sheet) return { porChave, porNome };
+  const byKey = {};  // id_whatsapp | number | uuid -> uuid
+  const byName = {}; // name -> uuid (fallback for treinos-AB and legacy rows)
+  if (!sheet) return { byKey, byName };
 
-  const dados = sheet.getDataRange().getValues();
-  for (let i = 1; i < dados.length; i++) {
-    const id = String(dados[i][USER_COL.ID] || "").trim();
-    const nome = String(dados[i][USER_COL.NAME] || "").trim();
-    const numero = String(dados[i][USER_COL.NUMBER] || "").trim();
-    const uuid = String(dados[i][USER_COL.UUID] || "").trim();
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    const id = String(rows[i][USER_COL.ID] || "").trim();
+    const name = String(rows[i][USER_COL.NAME] || "").trim();
+    const number = String(rows[i][USER_COL.NUMBER] || "").trim();
+    const uuid = String(rows[i][USER_COL.UUID] || "").trim();
     if (!uuid) continue;
-    porChave[uuid] = uuid;
-    if (id) porChave[id] = uuid;
-    if (numero) porChave[numero] = uuid;
-    if (nome && !(nome in porNome)) porNome[nome] = uuid;
+    byKey[uuid] = uuid;
+    if (id) byKey[id] = uuid;
+    if (number) byKey[number] = uuid;
+    if (name && !(name in byName)) byName[name] = uuid;
   }
-  return { porChave, porNome };
+  return { byKey, byName };
 }
 
-// Resolve a chave canônica (uuid) de uma linha de treino. Usa o valor da
-// coluna 0 (id_whatsapp legado ou uuid) e, como fallback, o nome (coluna 1) —
-// necessário para treinos cujo id_whatsapp antigo já não existe em "usuarios"
-// e para a aba "treinos-AB" (que só tem nome). Se nada casar, devolve o próprio
-// valor bruto para não perder a linha.
-function resolverUuidTreino(valorCol0, nome, mapas) {
-  const chave = String(valorCol0 || "").trim();
-  if (mapas.porChave[chave]) return mapas.porChave[chave];
-  const n = String(nome || "").trim();
-  if (n && mapas.porNome[n]) return mapas.porNome[n];
-  return chave || n;
+// Resolves the canonical key (uuid) of a workout row. Uses the column-0 value
+// (legacy id_whatsapp or uuid) and, as a fallback, the name (column 1) —
+// needed for workouts whose old id_whatsapp no longer exists in "usuarios"
+// and for the "treinos-AB" sheet (name only). If nothing matches, returns the
+// raw value so the row isn't lost.
+function resolveWorkoutUuid(col0Value, name, maps) {
+  const key = String(col0Value || "").trim();
+  if (maps.byKey[key]) return maps.byKey[key];
+  const n = String(name || "").trim();
+  if (n && maps.byName[n]) return maps.byName[n];
+  return key || n;
 }
 
-// Mapa uuid -> nome canônico (coluna B de "usuarios"), para exibição.
-function getMapaUuidParaNome() {
+// Map uuid -> canonical name (column B of "usuarios"), for display.
+function getUuidToNameMap() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEETS.USERS);
-  const mapa = {};
-  if (!sheet) return mapa;
-  const dados = sheet.getDataRange().getValues();
-  for (let i = 1; i < dados.length; i++) {
-    const nome = String(dados[i][USER_COL.NAME] || "").trim();
-    const uuid = String(dados[i][USER_COL.UUID] || "").trim();
-    if (uuid && nome) mapa[uuid] = nome;
+  const map = {};
+  if (!sheet) return map;
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    const name = String(rows[i][USER_COL.NAME] || "").trim();
+    const uuid = String(rows[i][USER_COL.UUID] || "").trim();
+    if (uuid && name) map[uuid] = name;
   }
-  return mapa;
+  return map;
 }
 
-// Lê a aba "treinos" e devolve registros normalizados { uuid, nome, data },
-// com o uuid canônico já resolvido (id_whatsapp legado/uuid → uuid, fallback
-// por nome). Descarta linhas vazias e o cabeçalho. NÃO inclui "treinos-AB"
-// (pré-bot) nem o índice da linha — quem precisa disso (ex.: /apagar) lê direto.
-// `mapas` é opcional: passe getMapasIdentidade() já calculado para evitar reler
-// a aba "usuarios".
-function lerTreinos(mapas) {
+// Reads the "treinos" sheet and returns normalized records { uuid, name, date }
+// with the canonical uuid already resolved (legacy id_whatsapp/uuid → uuid,
+// name fallback). Skips empty rows and the header. Does NOT include "treinos-AB"
+// (pre-bot) nor the row index — callers that need that (e.g. /apagar) read
+// directly. `maps` is optional: pass an already-computed getIdentityMaps() to
+// avoid re-reading the "usuarios" sheet.
+function readWorkouts(maps) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.WORKOUTS);
   if (!sheet) return [];
-  mapas = mapas || getMapasIdentidade();
-  const dados = sheet.getDataRange().getValues();
-  const treinos = [];
-  for (let i = 1; i < dados.length; i++) {
-    const col0 = dados[i][WORKOUT_COL.UUID];
-    const nome = dados[i][WORKOUT_COL.NAME];
-    const dataRaw = dados[i][WORKOUT_COL.DATE];
-    if ((!col0 && !nome) || !dataRaw) continue;
-    treinos.push({
-      uuid: resolverUuidTreino(col0, nome, mapas),
-      nome: nome,
-      data: new Date(dataRaw),
+  maps = maps || getIdentityMaps();
+  const rows = sheet.getDataRange().getValues();
+  const workouts = [];
+  for (let i = 1; i < rows.length; i++) {
+    const col0 = rows[i][WORKOUT_COL.UUID];
+    const name = rows[i][WORKOUT_COL.NAME];
+    const rawDate = rows[i][WORKOUT_COL.DATE];
+    if ((!col0 && !name) || !rawDate) continue;
+    workouts.push({
+      uuid: resolveWorkoutUuid(col0, name, maps),
+      name: name,
+      date: new Date(rawDate),
     });
   }
-  return treinos;
+  return workouts;
 }
 
 function formatarData(data) {
@@ -581,11 +579,11 @@ function parseDataBR(texto, inicioDoDia) {
 }
 
 function jaTreinouNaData(identificador, data) {
-  const usuario = getUsuarioPorIdentificador(identificador);
+  const usuario = getUserByIdentifier(identificador);
   if (!usuario) return false;
 
   // uuid canônico; cai para o id_whatsapp enquanto a migração não rodou.
-  const uuidUsuario = usuario.uuid || usuario.id_whatsapp;
+  const uuidUsuario = usuario.uuid || usuario.whatsappId;
 
   const dataRef = new Date(
     data.getFullYear(),
@@ -593,13 +591,13 @@ function jaTreinouNaData(identificador, data) {
     data.getDate()
   ).getTime();
 
-  // 🔑 compara pelo uuid canônico resolvido (lerTreinos já resolve)
-  return lerTreinos().some(t => {
+  // 🔑 compara pelo uuid canônico resolvido (readWorkouts já resolve)
+  return readWorkouts().some(t => {
     if (t.uuid !== uuidUsuario) return false;
     const dTime = new Date(
-      t.data.getFullYear(),
-      t.data.getMonth(),
-      t.data.getDate()
+      t.date.getFullYear(),
+      t.date.getMonth(),
+      t.date.getDate()
     ).getTime();
     return dTime === dataRef;
   });
