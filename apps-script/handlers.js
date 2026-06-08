@@ -83,7 +83,7 @@ function handleTicketStatus(e) {
   }
 
   const identificador = e.parameter.From;
-  const nome = getNomeUsuario(identificador);
+  const nome = getUserName(identificador);
 
   if (!nome) {
     return "❌ Você precisa estar cadastrado para consultar tickets. Use /cadastro Seu Nome";
@@ -121,15 +121,15 @@ function handleTicket(e) {
   }
 
   const identificador = e.parameter.From;
-  const usuario = getUsuarioPorIdentificador(identificador);
-  // const nome = getNomeUsuario(identificador);
+  const usuario = getUserByIdentifier(identificador);
+  // const nome = getUserName(identificador);
 
   if (!usuario) {
     return MSG_NOT_REGISTERED;
   }
 
-  const nome = usuario.nome;
-  const numero = usuario.numero;
+  const nome = usuario.name;
+  const numero = usuario.number;
 
   const mensagemCompleta = e.parameter.Body.trim();
   const mensagem = mensagemCompleta.replace(/^\/ticket\s*/i, "").trim();
@@ -163,7 +163,7 @@ function handleMeusTickets(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEETS.TICKETS);
 
-  const usuario = getUsuarioPorIdentificador(e.parameter.From || "");
+  const usuario = getUserByIdentifier(e.parameter.From || "");
   if (!usuario) {
     return MSG_NOT_REGISTERED;
   }
@@ -171,8 +171,8 @@ function handleMeusTickets(e) {
     return "🎫 Você ainda não abriu nenhum ticket.\nUse: /ticket sua mensagem";
   }
 
-  const meuUuid = usuario.uuid || usuario.id_whatsapp;
-  const mapas = getMapasIdentidade();
+  const meuUuid = usuario.uuid || usuario.whatsappId;
+  const mapas = getIdentityMaps();
 
   const dados = sheet.getDataRange().getValues();
   const meus = [];
@@ -180,7 +180,7 @@ function handleMeusTickets(e) {
     const [num, nomeUsuario, id, msg, status] = dados[i];
     if (!id) continue;
     // resolve o dono do ticket (número→uuid, com fallback por nome)
-    if (resolverUuidTreino(num, nomeUsuario, mapas) !== meuUuid) continue;
+    if (resolveWorkoutUuid(num, nomeUsuario, mapas) !== meuUuid) continue;
     meus.push({ id, msg, status });
   }
 
@@ -208,9 +208,9 @@ function handleHoje() {
   // linha do treino.
   const treinaramHoje = new Map(); // uuid -> nome
 
-  lerTreinos().forEach(t => {
-    if (formatarData(t.data) === hojeStr) {
-      treinaramHoje.set(t.uuid, t.nome);
+  readWorkouts().forEach(t => {
+    if (formatarData(t.date) === hojeStr) {
+      treinaramHoje.set(t.uuid, t.name);
     }
   });
 
@@ -322,31 +322,31 @@ function handleCampeoes() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const campeoesSheet = ss.getSheetByName(SHEETS.CHAMPIONS);
 
-  const mapas = getMapasIdentidade();
+  const mapas = getIdentityMaps();
 
   // 1. VITÓRIAS MANUAIS (aba 'campeoes', chaveada por uuid após migração)
   const linhasCampeoes = campeoesSheet.getDataRange().getValues();
-  const mapaNumeros = getMapaUuidParaNome(); // uuid → nome canônico
+  const mapaNumeros = getUuidToNameMap(); // uuid → nome canônico
   const vitoriasManuais = {}; // uuid → qtd
 
   for (let i = 1; i < linhasCampeoes.length; i++) {
     const [chave, qtd] = linhasCampeoes[i];
     if (!chave || !qtd) continue;
-    const uuid = resolverUuidTreino(chave, "", mapas);
+    const uuid = resolveWorkoutUuid(chave, "", mapas);
     vitoriasManuais[uuid] = parseInt(qtd, 10);
   }
 
   // 2. VITÓRIAS AUTOMÁTICAS (ranking por mês)
   const porMesAno = {}; // "mm/yyyy" → { uuid: [datas] }
 
-  lerTreinos(mapas).forEach(t => {
-    const chave = `${("0" + (t.data.getMonth() + 1)).slice(-2)}/${t.data.getFullYear()}`;
+  readWorkouts(mapas).forEach(t => {
+    const chave = `${("0" + (t.date.getMonth() + 1)).slice(-2)}/${t.date.getFullYear()}`;
 
     if (!porMesAno[chave]) porMesAno[chave] = {};
     if (!porMesAno[chave][t.uuid]) porMesAno[chave][t.uuid] = [];
 
-    porMesAno[chave][t.uuid].push(t.data);
-    if (!mapaNumeros[t.uuid] && t.nome) mapaNumeros[t.uuid] = t.nome;
+    porMesAno[chave][t.uuid].push(t.date);
+    if (!mapaNumeros[t.uuid] && t.name) mapaNumeros[t.uuid] = t.name;
   });
 
   const vitoriasGeradas = {};
@@ -428,7 +428,7 @@ function handleMessageLog(e, comando) {
   const mensagem = e.parameter.Body || "";
   const timestamp = new Date();
 
-  const nome = getNomeUsuario(identificador);
+  const nome = getUserName(identificador);
 
   mensagensSheet.appendRow([
     identificador,
@@ -441,7 +441,7 @@ function handleMessageLog(e, comando) {
 
 function handleCadastro(e) {
   const idenficador = e.parameter.From || "";
-  const nomeJaCadastrado = getNomeUsuario(idenficador);
+  const nomeJaCadastrado = getUserName(idenficador);
 
   if (nomeJaCadastrado) {
     return `✅ Você já está cadastrado ${nomeJaCadastrado}!`;
@@ -465,7 +465,7 @@ function handlePontuar(e) {
   const identificador = e.parameter.From;
   const hoje = new Date();
 
-  const usuario = getUsuarioPorIdentificador(identificador);
+  const usuario = getUserByIdentifier(identificador);
   if (!usuario) {
     return "❌ Usuário não encontrado. Use /cadastro Seu Nome.";
   }
@@ -476,7 +476,7 @@ function handlePontuar(e) {
 
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.WORKOUTS);
   // col D = id da mensagem do WhatsApp (pra apagar depois citando a mensagem)
-  sheet.appendRow([usuario.uuid || usuario.id_whatsapp, usuario.nome, hoje, e.parameter.MsgId || ""]);
+  sheet.appendRow([usuario.uuid || usuario.whatsappId, usuario.name, hoje, e.parameter.MsgId || ""]);
 
   return "✅ Treino registrado com sucesso!";
 }
@@ -516,7 +516,7 @@ function handleRetroativo(e) {
     return `❌ Só dá pra registrar treino retroativo de até ${LIMITE_DIAS_RETROATIVO} dias atrás.`;
   }
 
-  const usuario = getUsuarioPorIdentificador(identificador);
+  const usuario = getUserByIdentifier(identificador);
   if (!usuario) {
     return "❌ Usuário não encontrado. Use /cadastro Seu Nome.";
   }
@@ -527,7 +527,7 @@ function handleRetroativo(e) {
 
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.WORKOUTS);
   // col D = id da mensagem do WhatsApp (pra apagar depois citando a mensagem)
-  sheet.appendRow([usuario.uuid || usuario.id_whatsapp, usuario.nome, data, e.parameter.MsgId || ""]);
+  sheet.appendRow([usuario.uuid || usuario.whatsappId, usuario.name, data, e.parameter.MsgId || ""]);
 
   return `✅ Treino registrado em ${Utilities.formatDate(
     data,
@@ -538,23 +538,23 @@ function handleRetroativo(e) {
 
 function handleEu(e) {
   const idenficador = e.parameter.From || "";
-  const usuario = getUsuarioPorIdentificador(idenficador);
+  const usuario = getUserByIdentifier(idenficador);
 
   if (!usuario) {
     return MSG_NOT_REGISTERED;
   }
-  const uuidUsuario = usuario.uuid || usuario.id_whatsapp;
+  const uuidUsuario = usuario.uuid || usuario.whatsappId;
   const agora = new Date();
   const mesAtual = agora.getMonth();
   const anoAtual = agora.getFullYear();
 
-  const datas = lerTreinos()
+  const datas = readWorkouts()
     .filter(t =>
       t.uuid === uuidUsuario &&
-      t.data.getMonth() === mesAtual &&
-      t.data.getFullYear() === anoAtual
+      t.date.getMonth() === mesAtual &&
+      t.date.getFullYear() === anoAtual
     )
-    .map(t => formatarData(t.data))
+    .map(t => formatarData(t.date))
     .sort();
 
   const nomeMes = getNomeMesEmPortugues(mesAtual);
@@ -589,7 +589,7 @@ const DEFAULT_ANNUAL_GOAL = 150;
 // /meta 200    -> define a meta anual pessoal do ano corrente (aba "metas")
 function handleMeta(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const usuario = getUsuarioPorIdentificador(e.parameter.From || "");
+  const usuario = getUserByIdentifier(e.parameter.From || "");
   if (!usuario) {
     return MSG_NOT_REGISTERED;
   }
@@ -606,17 +606,17 @@ function handleMeta(e) {
       return "❌ A meta não pode passar de 366 — só dá pra treinar 1x por dia. Ex.: /meta 150";
     }
     const ano = new Date().getFullYear();
-    setMetaAnual(usuario.uuid || usuario.id_whatsapp, ano, nova);
+    setMetaAnual(usuario.uuid || usuario.whatsappId, ano, nova);
     return `✅ Meta anual de ${ano} definida: *${nova}* treinos.\nUse /meta para ver seu progresso.`;
   }
 
   // /meta -> mostra o progresso
   const agora = new Date();
   const ano = agora.getFullYear();
-  const metaInfo = getMetaAnual(usuario.uuid || usuario.id_whatsapp, ano);
+  const metaInfo = getMetaAnual(usuario.uuid || usuario.whatsappId, ano);
   const meta = metaInfo ? metaInfo.valor : DEFAULT_ANNUAL_GOAL;
   const herdada = metaInfo && metaInfo.ano < ano; // meta veio de um ano anterior
-  const total = contarTreinosNoAno(usuario.uuid || usuario.id_whatsapp, ano);
+  const total = contarTreinosNoAno(usuario.uuid || usuario.whatsappId, ano);
 
   const pct = Math.round((total / meta) * 100);
   const barra = barraProgresso(total, meta);
@@ -661,10 +661,10 @@ function handleMeta(e) {
 // eventuais duplicatas legadas. Não inclui dados pré-bot (treinos-AB, 2025).
 function contarTreinosNoAno(uuidUsuario, ano) {
   const dias = {};
-  lerTreinos().forEach(t => {
+  readWorkouts().forEach(t => {
     if (t.uuid !== uuidUsuario) return;
-    if (t.data.getFullYear() !== ano) return;
-    dias[`${t.data.getMonth()}-${t.data.getDate()}`] = true;
+    if (t.date.getFullYear() !== ano) return;
+    dias[`${t.date.getMonth()}-${t.date.getDate()}`] = true;
   });
   return Object.keys(dias).length;
 }
@@ -733,7 +733,7 @@ function setMetaAnual(uuid, ano, valor) {
 // a mensagem de /pontuar do treino; o Node envia o id dessa mensagem em
 // QuotedMsgId, e a gente acha a linha em "treinos" com esse id (coluna D).
 function handleApagarTreino(e) {
-  const usuario = getUsuarioPorIdentificador(e.parameter.From || "");
+  const usuario = getUserByIdentifier(e.parameter.From || "");
   if (!usuario) {
     return MSG_NOT_REGISTERED;
   }
