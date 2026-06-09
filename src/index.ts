@@ -8,18 +8,18 @@ const app = express();
 
 app.get('/', (_, res) => res.send('🤖 Bot do WhatsApp ativo'));
 
-// ✅ rota para QR (apenas em produção)
+// ✅ QR route (production only)
 if (environment === 'prod') {
   app.use('/qr', qrRoutes);
 }
 
-// ✅ nova rota para gerenciar/ver admins
+// ✅ route to manage/view admins
 app.use('/admins', adminsRoutes);
 
 app.listen(PORT, () => {
-  console.log(`🌍 Ambiente: ${environment}`);
-  console.log(`🚀 Servidor rodando na porta ${PORT}`);
+  console.log(`🌍 Environment: ${environment}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 
-  // ✅ inicializa o cliente WhatsApp
+  // ✅ initialize the WhatsApp client
   initClient();
 });

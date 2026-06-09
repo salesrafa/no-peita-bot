@@ -1,36 +1,36 @@
 function handleWrapped(e) {
-  const partes = (e.parameter.Body || "").trim().split(/\s+/);
-  const ano = partes[1] && /^\d{4}$/.test(partes[1])
-    ? parseInt(partes[1], 10)
+  const parts = (e.parameter.Body || "").trim().split(/\s+/);
+  const year = parts[1] && /^\d{4}$/.test(parts[1])
+    ? parseInt(parts[1], 10)
     : new Date().getFullYear();
 
-  const campeoesPorMes = getCampeoesPorMes(ano);
-  const rankingOlimpico = gerarRankingOlimpicoPorAno(ano);
+  const championsByMonth = getChampionsByMonth(year);
+  const rankingOlimpico = generateOlympicRankingByYear(year);
 
-  if (campeoesPorMes.length === 0 && rankingOlimpico.length === 0) {
-    return `📦 *Wrapped ${ano}*\n\nNenhum dado encontrado para este ano.`;
+  if (championsByMonth.length === 0 && rankingOlimpico.length === 0) {
+    return `📦 *Wrapped ${year}*\n\nNenhum dado encontrado para este ano.`;
   }
 
-  let texto = `📦 *Wrapped ${ano}*\n`;
-  texto += `━━━━━━━━━━━━━━━\n\n`;
+  let text = `📦 *Wrapped ${year}*\n`;
+  text += `━━━━━━━━━━━━━━━\n\n`;
 
-  texto += formatarWrappedCampeoes(campeoesPorMes);
-  texto += `\n\n`;
-  texto += formatarWrappedOlimpiada(rankingOlimpico);
+  text += formatWrappedChampions(championsByMonth);
+  text += `\n\n`;
+  text += formatWrappedOlympics(rankingOlimpico);
 
-  return texto.trim();
+  return text.trim();
 }
 
-function handleRankingAnoGrafico(e) {
-  const { inicio, fim, label } = getPeriodoPorAno(e.parameter.Body);
+function handleYearRankingChart(e) {
+  const { start, end, label } = getPeriodByYear(e.parameter.Body);
 
-  const ranking = gerarRankingPorPeriodo(inicio, fim);
+  const ranking = generateRankingForPeriod(start, end);
 
   if (ranking.length === 0) {
     return "📊 Nenhum dado para gerar gráfico.";
   }
 
-  const url = gerarGraficoRanking(ranking, label);
+  const url = generateRankingChart(ranking, label);
 
   return (
     `📊 *${label} — Gráfico*\n\n` +
@@ -39,39 +39,39 @@ function handleRankingAnoGrafico(e) {
   );
 }
 
-function handleRankingAno(e) {
-  const { inicio, fim, label } = getPeriodoPorAno(e.parameter.Body);
+function handleYearRanking(e) {
+  const { start, end, label } = getPeriodByYear(e.parameter.Body);
 
-  const ranking = gerarRankingPorPeriodo(inicio, fim);
+  const ranking = generateRankingForPeriod(start, end);
 
-  return formatarRanking(ranking, label);
+  return formatRanking(ranking, label);
 }
 
-function handleRankingOlimpiada(e) {
-  const partes = (e.parameter.Body || "").trim().split(/\s+/);
-  const ano = partes[1] && /^\d{4}$/.test(partes[1])
-    ? parseInt(partes[1], 10)
+function handleOlympicsRanking(e) {
+  const parts = (e.parameter.Body || "").trim().split(/\s+/);
+  const year = parts[1] && /^\d{4}$/.test(parts[1])
+    ? parseInt(parts[1], 10)
     : new Date().getFullYear();
 
-  // O quadro de medalhas considera apenas meses ja finalizados (ver getCampeoesPorMes).
-  const ranking = gerarRankingOlimpicoPorAno(ano);
+  // O quadro de medalhas considera apenas meses ja finalizados (ver getChampionsByMonth).
+  const ranking = generateOlympicRankingByYear(year);
 
-  let texto = `🏅 *Quadro de Medalhas ${ano}*\n`;
-  texto += `_(apenas meses já finalizados)_\n`;
-  texto += `━━━━━━━━━━━━━━━\n\n`;
+  let text = `🏅 *Quadro de Medalhas ${year}*\n`;
+  text += `_(apenas meses já finalizados)_\n`;
+  text += `━━━━━━━━━━━━━━━\n\n`;
 
   if (!ranking || ranking.length === 0) {
-    texto += "Nenhuma medalha registrada ainda.";
-    return texto;
+    text += "Nenhuma medalha registrada ainda.";
+    return text;
   }
 
   ranking.forEach((r, index) => {
-    texto +=
-      `${index + 1} - *${r.nome}*  ` +
-      `🥇 ${r.ouro}  🥈 ${r.prata}  🥉 ${r.bronze}\n`;
+    text +=
+      `${index + 1} - *${r.name}*  ` +
+      `🥇 ${r.gold}  🥈 ${r.silver}  🥉 ${r.bronze}\n`;
   });
 
-  return texto.trim();
+  return text.trim();
 }
 
 function handleTicketStatus(e) {
@@ -82,34 +82,34 @@ function handleTicketStatus(e) {
     return "❌ Nenhum ticket encontrado.";
   }
 
-  const identificador = e.parameter.From;
-  const nome = getUserName(identificador);
+  const identifier = e.parameter.From;
+  const name = getUserName(identifier);
 
-  if (!nome) {
+  if (!name) {
     return "❌ Você precisa estar cadastrado para consultar tickets. Use /cadastro Seu Nome";
   }
 
-  const mensagem = e.parameter.Body.trim();
-  const partes = mensagem.split(" ");
+  const message = e.parameter.Body.trim();
+  const parts = message.split(" ");
 
-  if (partes.length < 2) {
+  if (parts.length < 2) {
     return "❌ Você precisa informar o ID do ticket.\nExemplo: /ticketstatus 3";
   }
 
-  const idProcurado = parseInt(partes[1], 10);
-  if (isNaN(idProcurado)) {
+  const searchedId = parseInt(parts[1], 10);
+  if (isNaN(searchedId)) {
     return "❌ ID do ticket inválido. Use: /ticketstatus 3";
   }
 
-  const dados = sheet.getDataRange().getValues();
-  for (let i = 1; i < dados.length; i++) {
-    const [_, nomeUsuario, id, msg, status] = dados[i];
-    if (id === idProcurado) {
-      return `🎫 *Ticket #${id}*\n👤 Aberto por: ${nomeUsuario}\n📝 Mensagem: ${msg}\n📌 Status: *${status}*`;
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    const [_, rowName, id, msg, status] = rows[i];
+    if (id === searchedId) {
+      return `🎫 *Ticket #${id}*\n👤 Aberto por: ${rowName}\n📝 Mensagem: ${msg}\n📌 Status: *${status}*`;
     }
   }
 
-  return `❌ Ticket #${idProcurado} não encontrado.`;
+  return `❌ Ticket #${searchedId} não encontrado.`;
 }
 
 function handleTicket(e) {
@@ -120,193 +120,193 @@ function handleTicket(e) {
     sheet.appendRow(["numero", "nome", "id", "mensagem", "status"]);
   }
 
-  const identificador = e.parameter.From;
-  const usuario = getUserByIdentifier(identificador);
-  // const nome = getUserName(identificador);
+  const identifier = e.parameter.From;
+  const user = getUserByIdentifier(identifier);
+  // const name = getUserName(identifier);
 
-  if (!usuario) {
+  if (!user) {
     return MSG_NOT_REGISTERED;
   }
 
-  const nome = usuario.name;
-  const numero = usuario.number;
+  const name = user.name;
+  const number = user.number;
 
-  const mensagemCompleta = e.parameter.Body.trim();
-  const mensagem = mensagemCompleta.replace(/^\/ticket\s*/i, "").trim();
+  const fullMessage = e.parameter.Body.trim();
+  const message = fullMessage.replace(/^\/ticket\s*/i, "").trim();
 
-  if (!mensagem) {
+  if (!message) {
     return "❌ Você precisa escrever uma mensagem após o comando /ticket.\nExemplo: /ticket gostaria de sugerir uma funcionalidade";
   }
 
-  const ultimoId = sheet.getLastRow() > 1
+  const lastId = sheet.getLastRow() > 1
     ? sheet.getRange(sheet.getLastRow(), 3).getValue()
     : 0;
-  const novoId = ultimoId + 1;
+  const newId = lastId + 1;
 
-  sheet.appendRow([numero, nome, novoId, mensagem, "pendente"]);
+  sheet.appendRow([number, name, newId, message, "pendente"]);
 
-  return `✅ Ticket #${novoId} criado com sucesso!\nMensagem: "${mensagem}"\nStatus: pendente`;
+  return `✅ Ticket #${newId} criado com sucesso!\nMensagem: "${message}"\nStatus: pendente`;
 }
 
-// Emoji por status do ticket. Os 3 status possíveis são: pendente,
-// finalizado e ignorado.
-function emojiStatusTicket(status) {
+// Emoji for a ticket status. The 3 possible statuses are: pendente,
+// finalizado and ignorado.
+function ticketStatusEmoji(status) {
   const s = String(status || "").toLowerCase().trim();
   if (s === "finalizado") return "✅";
   if (s === "ignorado") return "🚫";
   return "⏳"; // pendente (padrão)
 }
 
-// Lista TODOS os tickets do próprio usuário (qualquer status: pendente,
-// resolvido, ignorado...). Cada um aparece com o status atual.
-function handleMeusTickets(e) {
+// Lists ALL of the user's own tickets (any status: pendente, finalizado,
+// ignorado). Each one shows its current status.
+function handleMyTickets(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEETS.TICKETS);
 
-  const usuario = getUserByIdentifier(e.parameter.From || "");
-  if (!usuario) {
+  const user = getUserByIdentifier(e.parameter.From || "");
+  if (!user) {
     return MSG_NOT_REGISTERED;
   }
   if (!sheet || sheet.getLastRow() <= 1) {
     return "🎫 Você ainda não abriu nenhum ticket.\nUse: /ticket sua mensagem";
   }
 
-  const meuUuid = usuario.uuid || usuario.whatsappId;
-  const mapas = getIdentityMaps();
+  const meuUuid = user.uuid || user.whatsappId;
+  const maps = getIdentityMaps();
 
-  const dados = sheet.getDataRange().getValues();
-  const meus = [];
-  for (let i = 1; i < dados.length; i++) {
-    const [num, nomeUsuario, id, msg, status] = dados[i];
+  const rows = sheet.getDataRange().getValues();
+  const mine = [];
+  for (let i = 1; i < rows.length; i++) {
+    const [num, rowName, id, msg, status] = rows[i];
     if (!id) continue;
-    // resolve o dono do ticket (número→uuid, com fallback por nome)
-    if (resolveWorkoutUuid(num, nomeUsuario, mapas) !== meuUuid) continue;
-    meus.push({ id, msg, status });
+    // resolve the ticket owner (number→uuid, with name fallback)
+    if (resolveWorkoutUuid(num, rowName, maps) !== meuUuid) continue;
+    mine.push({ id, msg, status });
   }
 
-  if (meus.length === 0) {
+  if (mine.length === 0) {
     return "🎫 Você ainda não abriu nenhum ticket.\nUse: /ticket sua mensagem";
   }
 
-  meus.sort((a, b) => Number(a.id) - Number(b.id));
+  mine.sort((a, b) => Number(a.id) - Number(b.id));
 
-  let resposta = `🎫 *Seus tickets (${meus.length}):*\n`;
-  meus.forEach(t => {
+  let response = `🎫 *Seus tickets (${mine.length}):*\n`;
+  mine.forEach(t => {
     let msg = String(t.msg || "").trim();
     if (msg.length > 60) msg = msg.slice(0, 57) + "...";
-    resposta += `#${t.id} ${emojiStatusTicket(t.status)} ${t.status} — "${msg}"\n`;
+    response += `#${t.id} ${ticketStatusEmoji(t.status)} ${t.status} — "${msg}"\n`;
   });
 
-  return resposta.trim();
+  return response.trim();
 }
 
-function handleHoje() {
-  const hojeStr = formatarData(new Date()); // formato dd/MM/yyyy
+function handleToday() {
+  const hojeStr = formatDate(new Date()); // formato dd/MM/yyyy
 
-  // Deduplica por uuid canônico, nao por nome: assim dois usuarios com o mesmo
-  // nome contam como pessoas diferentes. O nome exibido e o que foi gravado na
-  // linha do treino.
-  const treinaramHoje = new Map(); // uuid -> nome
+  // Dedup by canonical uuid, not by name: that way two users with the same
+  // name count as different people. The displayed name is the one stored on
+  // the workout row.
+  const trainedToday = new Map(); // uuid -> name
 
   readWorkouts().forEach(t => {
-    if (formatarData(t.date) === hojeStr) {
-      treinaramHoje.set(t.uuid, t.name);
+    if (formatDate(t.date) === hojeStr) {
+      trainedToday.set(t.uuid, t.name);
     }
   });
 
-  if (treinaramHoje.size === 0) {
+  if (trainedToday.size === 0) {
     return "🕒 Ninguém registrou treino hoje ainda.\nBora ser o primeiro? 💪";
   }
 
-  let resposta = `✅ *Treinos de hoje (${hojeStr}):*\n`;
-  [...treinaramHoje.values()].sort().forEach(nome => {
-    resposta += `- ${nome}\n`;
+  let response = `✅ *Treinos de hoje (${hojeStr}):*\n`;
+  [...trainedToday.values()].sort().forEach(name => {
+    response += `- ${name}\n`;
   });
 
-  return resposta.trim();
+  return response.trim();
 }
 
-function handleRankingMisterioso() {
+function handleMysteryRanking() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const luaCheiaSheet = ss.getSheetByName(SHEETS.FULL_MOON);
+  const fullMoonSheet = ss.getSheetByName(SHEETS.FULL_MOON);
 
-  const hoje = new Date();
+  const today = new Date();
 
-  // === DATAS VÁLIDAS (lua cheia + dia ímpar): passadas contam; futuras viram "próxima"
-  const dadosLuaCheia = luaCheiaSheet.getDataRange().getValues();
-  const datasValidas = [];   // dd/MM/yyyy já passadas
-  const datasFuturas = [];   // { raw, formatada }
+  // === VALID DATES (full moon + odd day): past ones count; future ones become "next"
+  const fullMoonRows = fullMoonSheet.getDataRange().getValues();
+  const validDates = [];   // dd/MM/yyyy já passadas
+  const futureDates = [];   // { raw, formatada }
 
-  for (let i = 1; i < dadosLuaCheia.length; i++) {
-    const dataObj = dadosLuaCheia[i][2];
-    if (!dataObj) continue;
+  for (let i = 1; i < fullMoonRows.length; i++) {
+    const dateObj = fullMoonRows[i][2];
+    if (!dateObj) continue;
 
-    const data = typeof dataObj === "string"
-      ? Utilities.parseDate(dataObj, Session.getScriptTimeZone(), "dd/MM/yyyy")
-      : new Date(dataObj);
+    const date = typeof dateObj === "string"
+      ? Utilities.parseDate(dateObj, Session.getScriptTimeZone(), "dd/MM/yyyy")
+      : new Date(dateObj);
 
-    if (data.getDate() % 2 !== 1) continue; // só dias ímpares
+    if (date.getDate() % 2 !== 1) continue; // só dias ímpares
 
-    const formatada = formatarData(data);
-    if (data <= hoje) {
-      datasValidas.push(formatada);
+    const formatada = formatDate(date);
+    if (date <= today) {
+      validDates.push(formatada);
     } else {
-      datasFuturas.push({ raw: data, formatada });
+      futureDates.push({ raw: date, formatada });
     }
   }
 
-  // === RANKING: delega a contagem para gerarRankingPorPeriodo, filtrando
-  // apenas os treinos cujas datas estão na lista de datas válidas.
-  const datasValidasSet = new Set(datasValidas);
-  const inicio = new Date(2000, 0, 1);
-  const fim = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59, 999);
+  // === RANKING: delegate counting to generateRankingForPeriod, keeping
+  // only the workouts whose dates are in the list of valid dates.
+  const datasValidasSet = new Set(validDates);
+  const start = new Date(2000, 0, 1);
+  const end = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
 
-  const ranking = gerarRankingPorPeriodo(
-    inicio,
-    fim,
-    (data) => datasValidasSet.has(formatarData(data))
+  const ranking = generateRankingForPeriod(
+    start,
+    end,
+    (date) => datasValidasSet.has(formatDate(date))
   );
 
   // === MONTAR RESPOSTA
-  let resposta = "🌕 *Ranking Misterioso* (dias ímpares com Lua Cheia)\n\n";
+  let response = "🌕 *Ranking Misterioso* (dias ímpares com Lua Cheia)\n\n";
 
-  if (datasValidas.length > 0) {
-    resposta += "🗓️ *Datas válidas anteriores:*\n";
-    resposta += datasValidas.join(", ") + "\n\n";
+  if (validDates.length > 0) {
+    response += "🗓️ *Datas válidas anteriores:*\n";
+    response += validDates.join(", ") + "\n\n";
   } else {
-    resposta += "⚠️ Nenhuma data válida disponível no cache.\n\n";
+    response += "⚠️ Nenhuma data válida disponível no cache.\n\n";
   }
 
   if (ranking.length === 0) {
-    resposta += "Ninguém pontuou nessas datas ainda.";
+    response += "Ninguém pontuou nessas datas ainda.";
   } else {
     ranking.forEach((r, i) => {
-      resposta += `${i + 1}. ${r.nome} - ${r.total} ponto${r.total > 1 ? 's' : ''}\n`;
+      response += `${i + 1}. ${r.name} - ${r.total} ponto${r.total > 1 ? 's' : ''}\n`;
     });
   }
 
-  // === PRÓXIMA DATA MISTERIOSA
-  datasFuturas.sort((a, b) => a.raw - b.raw);
-  if (datasFuturas.length > 0) {
-    resposta += `\n🔮 *Próxima data misteriosa:* ${datasFuturas[0].formatada}`;
+  // === NEXT MYSTERY DATE
+  futureDates.sort((a, b) => a.raw - b.raw);
+  if (futureDates.length > 0) {
+    response += `\n🔮 *Próxima data misteriosa:* ${futureDates[0].formatada}`;
   }
 
-  return resposta.trim();
+  return response.trim();
 }
 
-// Dado um array de datas de treino, retorna o total de dias unicos treinados
-// e a maior sequencia de dias consecutivos. Mesma logica de desempate usada
-// em calcularMetricasRankingComAB (total e, no empate, sequencia).
-function calcularTotalESequencia(datas) {
-  const diasUnicos = Array.from(
-    new Set(datas.map(d =>
+// Given an array of workout dates, returns the total of unique trained days
+// and the longest streak of consecutive days. Same tiebreak logic used in
+// computeRankingMetricsWithAB (total and, on a tie, streak).
+function computeTotalAndStreak(dates) {
+  const uniqueDays = Array.from(
+    new Set(dates.map(d =>
       new Date(d.getFullYear(), d.getMonth(), d.getDate()).toDateString()
     ))
   ).map(s => new Date(s)).sort((a, b) => a - b);
 
   let maiorSeq = 0, atualSeq = 0, anterior = null;
-  for (const d of diasUnicos) {
-    if (anterior && diasEntreDatas(anterior, d) === 1) {
+  for (const d of uniqueDays) {
+    if (anterior && daysBetween(anterior, d) === 1) {
       atualSeq += 1;
     } else {
       atualSeq = 1;
@@ -315,374 +315,374 @@ function calcularTotalESequencia(datas) {
     anterior = d;
   }
 
-  return { total: diasUnicos.length, sequencia: maiorSeq };
+  return { total: uniqueDays.length, streak: maiorSeq };
 }
 
-function handleCampeoes() {
+function handleChampions() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const campeoesSheet = ss.getSheetByName(SHEETS.CHAMPIONS);
+  const championsSheet = ss.getSheetByName(SHEETS.CHAMPIONS);
 
-  const mapas = getIdentityMaps();
+  const maps = getIdentityMaps();
 
-  // 1. VITÓRIAS MANUAIS (aba 'campeoes', chaveada por uuid após migração)
-  const linhasCampeoes = campeoesSheet.getDataRange().getValues();
-  const mapaNumeros = getUuidToNameMap(); // uuid → nome canônico
-  const vitoriasManuais = {}; // uuid → qtd
+  // 1. MANUAL WINS ('campeoes' sheet, keyed by uuid after the migration)
+  const championRows = championsSheet.getDataRange().getValues();
+  const nameByKey = getUuidToNameMap(); // uuid → name canônico
+  const manualWins = {}; // uuid → count
 
-  for (let i = 1; i < linhasCampeoes.length; i++) {
-    const [chave, qtd] = linhasCampeoes[i];
-    if (!chave || !qtd) continue;
-    const uuid = resolveWorkoutUuid(chave, "", mapas);
-    vitoriasManuais[uuid] = parseInt(qtd, 10);
+  for (let i = 1; i < championRows.length; i++) {
+    const [key, count] = championRows[i];
+    if (!key || !count) continue;
+    const uuid = resolveWorkoutUuid(key, "", maps);
+    manualWins[uuid] = parseInt(count, 10);
   }
 
-  // 2. VITÓRIAS AUTOMÁTICAS (ranking por mês)
-  const porMesAno = {}; // "mm/yyyy" → { uuid: [datas] }
+  // 2. AUTOMATIC WINS (ranking per month)
+  const byMonthYear = {}; // "mm/yyyy" → { uuid: [datas] }
 
-  readWorkouts(mapas).forEach(t => {
-    const chave = `${("0" + (t.date.getMonth() + 1)).slice(-2)}/${t.date.getFullYear()}`;
+  readWorkouts(maps).forEach(t => {
+    const key = `${("0" + (t.date.getMonth() + 1)).slice(-2)}/${t.date.getFullYear()}`;
 
-    if (!porMesAno[chave]) porMesAno[chave] = {};
-    if (!porMesAno[chave][t.uuid]) porMesAno[chave][t.uuid] = [];
+    if (!byMonthYear[key]) byMonthYear[key] = {};
+    if (!byMonthYear[key][t.uuid]) byMonthYear[key][t.uuid] = [];
 
-    porMesAno[chave][t.uuid].push(t.date);
-    if (!mapaNumeros[t.uuid] && t.name) mapaNumeros[t.uuid] = t.name;
+    byMonthYear[key][t.uuid].push(t.date);
+    if (!nameByKey[t.uuid] && t.name) nameByKey[t.uuid] = t.name;
   });
 
-  const vitoriasGeradas = {};
+  const generatedWins = {};
 
-  const agora = new Date();
-  const mesAtual = agora.getMonth();
-  const anoAtual = agora.getFullYear();
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
 
-  // para cada mês completo, pega o(s) campeão(ões)
-  Object.entries(porMesAno).forEach(([mesAno, atletas]) => {
-    const [mesStr, anoStr] = mesAno.split("/");
-    const mes = parseInt(mesStr, 10) - 1;
-    const ano = parseInt(anoStr, 10);
+  // for each finished month, pick the champion(s)
+  Object.entries(byMonthYear).forEach(([mesAno, athletes]) => {
+    const [monthStr, anoStr] = mesAno.split("/");
+    const month = parseInt(monthStr, 10) - 1;
+    const year = parseInt(anoStr, 10);
 
-    // ignora o mês atual
-    if (mes === mesAtual && ano === anoAtual) return;
+    // skip the current month
+    if (month === currentMonth && year === currentYear) return;
 
-    // métricas por atleta: dias únicos treinados + maior sequência
-    const metricas = Object.entries(atletas).map(([numero, datas]) => {
-      const { total, sequencia } = calcularTotalESequencia(datas);
-      return { numero, total, sequencia };
+    // per-athlete metrics: unique trained days + longest streak
+    const metricas = Object.entries(athletes).map(([number, dates]) => {
+      const { total, streak } = computeTotalAndStreak(dates);
+      return { number, total, streak };
     });
 
-    // ordena por total e, no empate, por sequência
+    // sort by total and, on a tie, by streak
     metricas.sort((a, b) => {
       if (b.total !== a.total) return b.total - a.total;
-      return b.sequencia - a.sequencia;
+      return b.streak - a.streak;
     });
 
-    // campeão(ões) do mês: todos empatados em total E sequência com o topo
+    // month champion(s): everyone tied on total AND streak with the top
     const topo = metricas[0];
-    const campeoesDoMes = metricas.filter(m =>
-      m.total === topo.total && m.sequencia === topo.sequencia
+    const monthChampions = metricas.filter(m =>
+      m.total === topo.total && m.streak === topo.streak
     );
 
-    campeoesDoMes.forEach(({ numero }) => {
-      if (!vitoriasGeradas[numero]) vitoriasGeradas[numero] = 0;
-      vitoriasGeradas[numero]++;
+    monthChampions.forEach(({ number }) => {
+      if (!generatedWins[number]) generatedWins[number] = 0;
+      generatedWins[number]++;
     });
   });
 
   // 3. SOMAR TUDO (chaves = uuid)
-  const totalPorNumero = {};
+  const totalByKey = {};
 
-  const todosNumeros = new Set([
-    ...Object.keys(vitoriasManuais),
-    ...Object.keys(vitoriasGeradas)
+  const allKeys = new Set([
+    ...Object.keys(manualWins),
+    ...Object.keys(generatedWins)
   ]);
 
-  todosNumeros.forEach(numero => {
-    const manual = vitoriasManuais[numero] || 0;
-    const gerado = vitoriasGeradas[numero] || 0;
+  allKeys.forEach(number => {
+    const manual = manualWins[number] || 0;
+    const gerado = generatedWins[number] || 0;
     const total = manual + gerado;
-    if (total > 0) totalPorNumero[numero] = total;
+    if (total > 0) totalByKey[number] = total;
   });
 
-  if (Object.keys(totalPorNumero).length === 0) {
+  if (Object.keys(totalByKey).length === 0) {
     return "🏆 Ainda não há campeões registrados.";
   }
 
-  const ranking = Object.entries(totalPorNumero)
+  const ranking = Object.entries(totalByKey)
     .sort((a, b) => b[1] - a[1]);
 
-  let resposta = "🏆 *Campeões:*\n";
-  ranking.forEach(([numero, total], index) => {
-    const nome = mapaNumeros[numero] || `(${numero})`;
+  let response = "🏆 *Campeões:*\n";
+  ranking.forEach(([number, total], index) => {
+    const name = nameByKey[number] || `(${number})`;
     const trofeus = "🏆".repeat(total);
-    resposta += `${index + 1}. ${nome} - ${trofeus}\n`;
+    response += `${index + 1}. ${name} - ${trofeus}\n`;
   });
 
-  return resposta.trim();
+  return response.trim();
 }
 
-function handleMessageLog(e, comando) {
+function logMessage(e, command) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const mensagensSheet = ss.getSheetByName(SHEETS.MESSAGES);
+  const messagesSheet = ss.getSheetByName(SHEETS.MESSAGES);
 
-  const identificador = e.parameter.From || "";
-  const mensagem = e.parameter.Body || "";
+  const identifier = e.parameter.From || "";
+  const message = e.parameter.Body || "";
   const timestamp = new Date();
 
-  const nome = getUserName(identificador);
+  const name = getUserName(identifier);
 
-  mensagensSheet.appendRow([
-    identificador,
-    nome ? nome : 'Não Cadastrado',
-    mensagem,
+  messagesSheet.appendRow([
+    identifier,
+    name ? name : 'Não Cadastrado',
+    message,
     Utilities.formatDate(timestamp, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm:ss"),
-    comando
+    command
   ]);
 }
 
-function handleCadastro(e) {
-  const idenficador = e.parameter.From || "";
-  const nomeJaCadastrado = getUserName(idenficador);
+function handleRegister(e) {
+  const identifier = e.parameter.From || "";
+  const existingName = getUserName(identifier);
 
-  if (nomeJaCadastrado) {
-    return `✅ Você já está cadastrado ${nomeJaCadastrado}!`;
+  if (existingName) {
+    return `✅ Você já está cadastrado ${existingName}!`;
   }
-  const mensagem = e.parameter.Body || "";
+  const message = e.parameter.Body || "";
   const timestamp = new Date();
 
-  if (!mensagem.toLowerCase().startsWith("/cadastro ")) {
+  if (!message.toLowerCase().startsWith("/cadastro ")) {
     return "❓ Use: /cadastro Seu Nome";
   }
 
-  const nome = mensagem.substring(10).trim();
+  const name = message.substring(10).trim();
   const uuid = Utilities.getUuid(); // identidade interna estável
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.USERS);
-  // Colunas: A id_whatsapp | B nome | C data | D role | E numero | F uuid
-  sheet.appendRow([idenficador, nome, timestamp, "", "", uuid]);
-  return `✅ Cadastro realizado com sucesso, ${nome}!`;
+  // Columns: A id_whatsapp | B name | C date | D role | E number | F uuid
+  sheet.appendRow([identifier, name, timestamp, "", "", uuid]);
+  return `✅ Cadastro realizado com sucesso, ${name}!`;
 }
 
-function handlePontuar(e) {
-  const identificador = e.parameter.From;
-  const hoje = new Date();
+function handleScore(e) {
+  const identifier = e.parameter.From;
+  const today = new Date();
 
-  const usuario = getUserByIdentifier(identificador);
-  if (!usuario) {
+  const user = getUserByIdentifier(identifier);
+  if (!user) {
     return "❌ Usuário não encontrado. Use /cadastro Seu Nome.";
   }
 
-  if (jaTreinouNaData(identificador, hoje)) {
+  if (workedOutOnDate(identifier, today)) {
     return "⚠️ Você já registrou um treino hoje.";
   }
 
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.WORKOUTS);
-  // col D = id da mensagem do WhatsApp (pra apagar depois citando a mensagem)
-  sheet.appendRow([usuario.uuid || usuario.whatsappId, usuario.name, hoje, e.parameter.MsgId || ""]);
+  // col D = WhatsApp message id (to delete later by quoting the message)
+  sheet.appendRow([user.uuid || user.whatsappId, user.name, today, e.parameter.MsgId || ""]);
 
   return "✅ Treino registrado com sucesso!";
 }
 
 function handleRanking(e) {
-  const { inicio, fim, label, tipo } = getPeriodoPorMensagem(e.parameter.Body);
+  const { start, end, label, type } = getPeriodFromMessage(e.parameter.Body);
 
-  const ranking = gerarRankingPorPeriodo(inicio, fim);
+  const ranking = generateRankingForPeriod(start, end);
 
-  // mostra o selo do bicho só nos rankings mensais (não em intervalos de data)
-  return formatarRanking(ranking, label, tipo === "mes");
+  // show the animal badge only on monthly rankings (not on date ranges)
+  return formatRanking(ranking, label, type === "mes");
 }
 
-function handleRetroativo(e) {
-  const identificador = e.parameter.From;
-  const partes = (e.parameter.Body || "").trim().split(/\s+/);
+function handleBackdate(e) {
+  const identifier = e.parameter.From;
+  const parts = (e.parameter.Body || "").trim().split(/\s+/);
 
-  if (partes.length !== 2) {
+  if (parts.length !== 2) {
     return "❌ Use: /retroativo DD/MM/AAAA";
   }
 
-  const data = parseDataBR(partes[1], true);
-  if (!data) {
+  const date = parseBrDate(parts[1], true);
+  if (!date) {
     return "❌ Data inválida. Use DD/MM/AAAA.";
   }
 
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
-  if (data.getTime() > hoje.getTime()) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (date.getTime() > today.getTime()) {
     return "❌ Não dá pra registrar treino em data futura.";
   }
 
   const LIMITE_DIAS_RETROATIVO = 10;
-  const limiteMinimo = new Date(hoje);
+  const limiteMinimo = new Date(today);
   limiteMinimo.setDate(limiteMinimo.getDate() - LIMITE_DIAS_RETROATIVO);
-  if (data.getTime() < limiteMinimo.getTime()) {
+  if (date.getTime() < limiteMinimo.getTime()) {
     return `❌ Só dá pra registrar treino retroativo de até ${LIMITE_DIAS_RETROATIVO} dias atrás.`;
   }
 
-  const usuario = getUserByIdentifier(identificador);
-  if (!usuario) {
+  const user = getUserByIdentifier(identifier);
+  if (!user) {
     return "❌ Usuário não encontrado. Use /cadastro Seu Nome.";
   }
 
-  if (jaTreinouNaData(identificador, data)) {
+  if (workedOutOnDate(identifier, date)) {
     return "⚠️ Você já registrou um treino nessa data.";
   }
 
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.WORKOUTS);
-  // col D = id da mensagem do WhatsApp (pra apagar depois citando a mensagem)
-  sheet.appendRow([usuario.uuid || usuario.whatsappId, usuario.name, data, e.parameter.MsgId || ""]);
+  // col D = WhatsApp message id (to delete later by quoting the message)
+  sheet.appendRow([user.uuid || user.whatsappId, user.name, date, e.parameter.MsgId || ""]);
 
   return `✅ Treino registrado em ${Utilities.formatDate(
-    data,
+    date,
     Session.getScriptTimeZone(),
     "dd/MM/yyyy"
   )}.`;
 }
 
-function handleEu(e) {
-  const idenficador = e.parameter.From || "";
-  const usuario = getUserByIdentifier(idenficador);
+function handleMe(e) {
+  const identifier = e.parameter.From || "";
+  const user = getUserByIdentifier(identifier);
 
-  if (!usuario) {
+  if (!user) {
     return MSG_NOT_REGISTERED;
   }
-  const uuidUsuario = usuario.uuid || usuario.whatsappId;
-  const agora = new Date();
-  const mesAtual = agora.getMonth();
-  const anoAtual = agora.getFullYear();
+  const uuidUsuario = user.uuid || user.whatsappId;
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
 
-  const datas = readWorkouts()
+  const dates = readWorkouts()
     .filter(t =>
       t.uuid === uuidUsuario &&
-      t.date.getMonth() === mesAtual &&
-      t.date.getFullYear() === anoAtual
+      t.date.getMonth() === currentMonth &&
+      t.date.getFullYear() === currentYear
     )
-    .map(t => formatarData(t.date))
+    .map(t => formatDate(t.date))
     .sort();
 
-  const nomeMes = getNomeMesEmPortugues(mesAtual);
-  const total = datas.length;
-  const { atual, proximo, faltam } = classificarBicho(total);
+  const monthName = getMonthNamePtBr(currentMonth);
+  const total = dates.length;
+  const { current, next, remaining } = classifyAnimal(total);
 
-  // Selo do bicho (classificação individual do mês) + incentivo do próximo nível
-  let resposta = `${atual.emoji} *${atual.nome}*\n`;
-  resposta += `${total} treino${total === 1 ? "" : "s"} em ${nomeMes} — ${atual.vibe}!\n`;
-  if (proximo) {
-    if (proximo.secreto) {
-      // não revela o bicho lendário do topo — deixa como surpresa
-      resposta += `Faltam ${faltam} treino${faltam === 1 ? "" : "s"} pra um bicho lendário... 👀\n`;
+  // Animal badge (individual monthly tier) + incentive toward the next level
+  let response = `${current.emoji} *${current.name}*\n`;
+  response += `${total} treino${total === 1 ? "" : "s"} em ${monthName} — ${current.vibe}!\n`;
+  if (next) {
+    if (next.secret) {
+      // don't reveal the legendary top animal — keep it a surprise
+      response += `Faltam ${remaining} treino${remaining === 1 ? "" : "s"} pra um bicho lendário... 👀\n`;
     } else {
-      resposta += `Faltam ${faltam} treino${faltam === 1 ? "" : "s"} pra virar ${proximo.emoji} ${proximo.nome}.\n`;
+      response += `Faltam ${remaining} treino${remaining === 1 ? "" : "s"} pra virar ${next.emoji} ${next.name}.\n`;
     }
   }
 
   if (total > 0) {
-    resposta += `\n📆 Seus treinos em ${nomeMes}:\n`;
-    datas.forEach(data => resposta += `- ${data}\n`);
+    response += `\n📆 Seus treinos em ${monthName}:\n`;
+    dates.forEach(date => response += `- ${date}\n`);
   }
 
-  return resposta.trim();
+  return response.trim();
 }
 
-// Meta anual padrão (treinos no ano) quando a pessoa não definiu a sua.
-// Ajustável aqui; cada um pode sobrescrever com /meta N.
+// Default annual goal (workouts in the year) when the person hasn't set one.
+// Adjustable here; each user can override it with /meta N.
 const DEFAULT_ANNUAL_GOAL = 150;
 
-// /meta        -> mostra o progresso da meta anual (com barra e projeção)
-// /meta 200    -> define a meta anual pessoal do ano corrente (aba "metas")
-function handleMeta(e) {
+// /meta        -> shows annual goal progress (with bar and projection)
+// /meta 200    -> sets the personal annual goal for the current year ("metas" sheet)
+function handleGoal(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const usuario = getUserByIdentifier(e.parameter.From || "");
-  if (!usuario) {
+  const user = getUserByIdentifier(e.parameter.From || "");
+  if (!user) {
     return MSG_NOT_REGISTERED;
   }
 
-  const partes = (e.parameter.Body || "").trim().split(/\s+/);
+  const parts = (e.parameter.Body || "").trim().split(/\s+/);
 
-  // /meta N -> define a meta pessoal
-  if (partes.length >= 2) {
-    const nova = parseInt(partes[1], 10);
+  // /meta N -> set the personal goal
+  if (parts.length >= 2) {
+    const nova = parseInt(parts[1], 10);
     if (isNaN(nova) || nova <= 0) {
       return "❌ Meta inválida. Informe um número positivo. Ex.: /meta 150";
     }
     if (nova > 366) {
       return "❌ A meta não pode passar de 366 — só dá pra treinar 1x por dia. Ex.: /meta 150";
     }
-    const ano = new Date().getFullYear();
-    setMetaAnual(usuario.uuid || usuario.whatsappId, ano, nova);
-    return `✅ Meta anual de ${ano} definida: *${nova}* treinos.\nUse /meta para ver seu progresso.`;
+    const year = new Date().getFullYear();
+    setAnnualGoal(user.uuid || user.whatsappId, year, nova);
+    return `✅ Meta anual de ${year} definida: *${nova}* treinos.\nUse /meta para ver seu progresso.`;
   }
 
-  // /meta -> mostra o progresso
-  const agora = new Date();
-  const ano = agora.getFullYear();
-  const metaInfo = getMetaAnual(usuario.uuid || usuario.whatsappId, ano);
-  const meta = metaInfo ? metaInfo.valor : DEFAULT_ANNUAL_GOAL;
-  const herdada = metaInfo && metaInfo.ano < ano; // meta veio de um ano anterior
-  const total = contarTreinosNoAno(usuario.uuid || usuario.whatsappId, ano);
+  // /meta -> show progress
+  const now = new Date();
+  const year = now.getFullYear();
+  const goalInfo = getAnnualGoal(user.uuid || user.whatsappId, year);
+  const meta = goalInfo ? goalInfo.value : DEFAULT_ANNUAL_GOAL;
+  const herdada = goalInfo && goalInfo.year < year; // meta veio de um ano anterior
+  const total = countWorkoutsInYear(user.uuid || user.whatsappId, year);
 
   const pct = Math.round((total / meta) * 100);
-  const barra = barraProgresso(total, meta);
+  const barra = progressBar(total, meta);
 
-  const inicioAno = new Date(ano, 0, 1);
-  const fimAno = new Date(ano, 11, 31, 23, 59, 59, 999);
+  const yearStart = new Date(year, 0, 1);
+  const yearEnd = new Date(year, 11, 31, 23, 59, 59, 999);
   const umDia = 24 * 60 * 60 * 1000;
-  const diaDoAno = Math.max(1, Math.floor((agora - inicioAno) / umDia) + 1);
-  const diasNoAno = Math.round((fimAno - inicioAno) / umDia) + 1;
-  const diasRestantes = Math.max(0, diasNoAno - diaDoAno);
+  const dayOfYear = Math.max(1, Math.floor((now - yearStart) / umDia) + 1);
+  const daysInYear = Math.round((yearEnd - yearStart) / umDia) + 1;
+  const daysLeft = Math.max(0, daysInYear - dayOfYear);
 
-  let resposta = `🎯 *Meta anual ${ano}*\n`;
-  resposta += `👟 ${total} / ${meta} treinos (${pct}%)\n`;
-  resposta += `${barra}\n`;
-  resposta += `📅 Faltam ${diasRestantes} dia${diasRestantes === 1 ? "" : "s"}\n`;
+  let response = `🎯 *Meta anual ${year}*\n`;
+  response += `👟 ${total} / ${meta} treinos (${pct}%)\n`;
+  response += `${barra}\n`;
+  response += `📅 Faltam ${daysLeft} dia${daysLeft === 1 ? "" : "s"}\n`;
 
   if (total >= meta) {
-    resposta += `🏆 Meta batida! Bora aumentar? (/meta N)`;
+    response += `🏆 Meta batida! Bora aumentar? (/meta N)`;
   } else {
-    const ritmo = total / diaDoAno; // treinos por dia até agora
-    const projetado = Math.round(total + ritmo * diasRestantes);
+    const ritmo = total / dayOfYear; // treinos por dia até agora
+    const projetado = Math.round(total + ritmo * daysLeft);
     if (projetado >= meta) {
-      resposta += `📈 No ritmo atual você fecha o ano em ~${projetado} — vai bater! 🎉`;
+      response += `📈 No ritmo atual você fecha o ano em ~${projetado} — vai bater! 🎉`;
     } else {
       const restante = meta - total;
-      const semanas = Math.max(1, diasRestantes / 7);
+      const semanas = Math.max(1, daysLeft / 7);
       const porSemana = Math.ceil(restante / semanas);
-      resposta += `📉 No ritmo atual fecha em ~${projetado}. ` +
+      response += `📉 No ritmo atual fecha em ~${projetado}. ` +
         `Faltam ${restante} treinos — ~${porSemana}/semana pra alcançar.`;
     }
   }
 
   if (herdada) {
-    resposta += `\n\nℹ️ Meta herdada de ${metaInfo.ano} — defina a de ${ano} com /meta N`;
+    response += `\n\nℹ️ Meta herdada de ${goalInfo.year} — defina a de ${year} com /meta N`;
   }
 
-  return resposta.trim();
+  return response.trim();
 }
 
-// Conta os dias únicos treinados por um usuário (uuid) em um ano.
-// Dedup por dia é redundante (o bot já limita 1/dia), mas protege contra
-// eventuais duplicatas legadas. Não inclui dados pré-bot (treinos-AB, 2025).
-function contarTreinosNoAno(uuidUsuario, ano) {
-  const dias = {};
+// Counts the unique trained days for a user (uuid) in a year.
+// Per-day dedup is redundant (the bot already limits 1/day) but guards against
+// any legacy duplicates. Does not include pre-bot rows (treinos-AB, 2025).
+function countWorkoutsInYear(uuidUsuario, year) {
+  const days = {};
   readWorkouts().forEach(t => {
     if (t.uuid !== uuidUsuario) return;
-    if (t.date.getFullYear() !== ano) return;
-    dias[`${t.date.getMonth()}-${t.date.getDate()}`] = true;
+    if (t.date.getFullYear() !== year) return;
+    days[`${t.date.getMonth()}-${t.date.getDate()}`] = true;
   });
-  return Object.keys(dias).length;
+  return Object.keys(days).length;
 }
 
 // Barra de progresso textual de 10 blocos (🟩 cheio, ⬜ vazio).
-function barraProgresso(valor, total) {
+function progressBar(value, total) {
   const blocos = 10;
-  const frac = total > 0 ? valor / total : 0;
+  const frac = total > 0 ? value / total : 0;
   let cheios = Math.round(frac * blocos);
   if (cheios < 0) cheios = 0;
   if (cheios > blocos) cheios = blocos;
   return "🟩".repeat(cheios) + "⬜".repeat(blocos - cheios);
 }
 
-// Aba "metas": uma linha por (uuid, ano). Mantém histórico das metas anuais
-// sem inchar a aba "usuarios" — ano novo só vira linha nova.
-// Colunas: A uuid | B ano | C meta
-function getSheetMetas() {
+// "metas" sheet: one row per (uuid, year). Keeps the history of annual goals
+// without bloating the "usuarios" sheet — a new year is just a new row.
+// Columns: A uuid | B year | C goal
+function getGoalsSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(SHEETS.GOALS);
   if (!sheet) {
@@ -694,50 +694,50 @@ function getSheetMetas() {
   return sheet;
 }
 
-// Retorna a meta efetiva de um usuário para um ano: a do próprio ano, se
-// existir; senão herda a do ano anterior mais recente. Devolve { valor, ano }
-// da meta encontrada (ano < alvo indica herança), ou null se nunca definiu.
-function getMetaAnual(uuid, ano) {
+// Returns the effective goal for a user in a year: the year's own goal if it
+// exists; otherwise inherits the most recent prior year's goal. Returns
+// { value, year } of the found goal (year < target means inherited), or null.
+function getAnnualGoal(uuid, year) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SHEETS.GOALS);
   if (!sheet || sheet.getLastRow() <= 1) return null;
-  const dados = sheet.getDataRange().getValues();
-  let melhor = null; // { valor, ano } com o maior ano <= alvo
-  for (let i = 1; i < dados.length; i++) {
-    const [u, a, m] = dados[i];
+  const rows = sheet.getDataRange().getValues();
+  let melhor = null; // { value, ano } com o maior ano <= alvo
+  for (let i = 1; i < rows.length; i++) {
+    const [u, a, m] = rows[i];
     if (String(u).trim() !== String(uuid).trim()) continue;
-    const anoLinha = Number(a);
-    const valor = parseInt(m, 10);
-    if (isNaN(anoLinha) || isNaN(valor) || valor <= 0) continue;
-    if (anoLinha > ano) continue; // ignora metas de anos futuros
-    if (!melhor || anoLinha > melhor.ano) melhor = { valor: valor, ano: anoLinha };
+    const rowYear = Number(a);
+    const value = parseInt(m, 10);
+    if (isNaN(rowYear) || isNaN(value) || value <= 0) continue;
+    if (rowYear > year) continue; // ignora metas de anos futuros
+    if (!melhor || rowYear > melhor.year) melhor = { value: value, year: rowYear };
   }
   return melhor;
 }
 
-// Define (upsert) a meta de um usuário para um ano.
-function setMetaAnual(uuid, ano, valor) {
-  const sheet = getSheetMetas();
-  const dados = sheet.getDataRange().getValues();
-  for (let i = 1; i < dados.length; i++) {
-    const [u, a] = dados[i];
-    if (String(u).trim() === String(uuid).trim() && Number(a) === Number(ano)) {
-      sheet.getRange(i + 1, 3).setValue(valor); // coluna C = meta
+// Sets (upsert) a user's goal for a year.
+function setAnnualGoal(uuid, year, value) {
+  const sheet = getGoalsSheet();
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    const [u, a] = rows[i];
+    if (String(u).trim() === String(uuid).trim() && Number(a) === Number(year)) {
+      sheet.getRange(i + 1, 3).setValue(value); // coluna C = meta
       return;
     }
   }
-  sheet.appendRow([uuid, ano, valor]);
+  sheet.appendRow([uuid, year, value]);
 }
 
-// /apagar (apenas admins): apaga um treino. O admin precisa RESPONDER (citar)
-// a mensagem de /pontuar do treino; o Node envia o id dessa mensagem em
-// QuotedMsgId, e a gente acha a linha em "treinos" com esse id (coluna D).
-function handleApagarTreino(e) {
-  const usuario = getUserByIdentifier(e.parameter.From || "");
-  if (!usuario) {
+// /apagar (admins only): deletes a workout. The admin must REPLY (quote) the
+// workout's /pontuar message; Node sends that message id in QuotedMsgId, and
+// we find the row in "treinos" with that id (column D).
+function handleDeleteWorkout(e) {
+  const user = getUserByIdentifier(e.parameter.From || "");
+  if (!user) {
     return MSG_NOT_REGISTERED;
   }
-  if (!isAdmin(usuario)) {
+  if (!isAdmin(user)) {
     return "🔒 Só admins podem apagar treinos.";
   }
 
@@ -752,119 +752,119 @@ function handleApagarTreino(e) {
     return "❌ Nenhum treino encontrado.";
   }
 
-  const dados = sheet.getDataRange().getValues();
-  for (let i = 1; i < dados.length; i++) {
-    if (String(dados[i][WORKOUT_COL.MSG_ID] || "").trim() !== quotedId) continue;
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][WORKOUT_COL.MSG_ID] || "").trim() !== quotedId) continue;
 
-    const nome = dados[i][WORKOUT_COL.NAME];
-    const data = dados[i][WORKOUT_COL.DATE];
-    const dataFmt = data
-      ? formatarData(new Date(data))
+    const name = rows[i][WORKOUT_COL.NAME];
+    const date = rows[i][WORKOUT_COL.DATE];
+    const dateFmt = date
+      ? formatDate(new Date(date))
       : "?";
     sheet.deleteRow(i + 1);
-    return `🗑️ Treino de ${nome} em ${dataFmt} apagado.`;
+    return `🗑️ Treino de ${name} em ${dateFmt} apagado.`;
   }
 
   return "❌ Não achei um treino ligado a essa mensagem. Cite a mensagem de /pontuar original (a partir de agora os treinos guardam esse vínculo).";
 }
 
-function handleAjuda() {
-  let texto = `🤖 *Ajuda — Comandos do Bot*\n`;
-  texto += `━━━━━━━━━━━━━━━━━━\n\n`;
+function handleHelp() {
+  let text = `🤖 *Ajuda — Comandos do Bot*\n`;
+  text += `━━━━━━━━━━━━━━━━━━\n\n`;
 
-  texto += `🧍 *Cadastro*\n`;
-  texto += `• /cadastro Seu Nome\n`;
-  texto += `  Registra você no bot para poder usar os demais comandos.\n\n`;
+  text += `🧍 *Cadastro*\n`;
+  text += `• /cadastro Seu Nome\n`;
+  text += `  Registra você no bot para poder usar os demais comandos.\n\n`;
 
-  texto += `🏋️ *Treinos*\n`;
-  texto += `• /pontuar\n`;
-  texto += `  Registra um treino no dia de hoje (apenas 1 por dia).\n\n`;
+  text += `🏋️ *Treinos*\n`;
+  text += `• /pontuar\n`;
+  text += `  Registra um treino no dia de hoje (apenas 1 por dia).\n\n`;
 
-  texto += `• /retroativo DD/MM/AAAA\n`;
-  texto += `  Registra um treino em uma data passada.\n\n`;
+  text += `• /retroativo DD/MM/AAAA\n`;
+  text += `  Registra um treino em uma data passada.\n\n`;
 
-  texto += `• /apagar (só admins)\n`;
-  texto += `  Responda a mensagem de /pontuar do treino e mande /apagar.\n\n`;
+  text += `• /apagar (só admins)\n`;
+  text += `  Responda a mensagem de /pontuar do treino e mande /apagar.\n\n`;
 
-  texto += `• /hoje\n`;
-  texto += `  Mostra quem já treinou hoje.\n\n`;
+  text += `• /hoje\n`;
+  text += `  Mostra quem já treinou hoje.\n\n`;
 
-  texto += `• /eu\n`;
-  texto += `  Mostra seu bicho do mês 🐾 e lista seus treinos.\n\n`;
+  text += `• /eu\n`;
+  text += `  Mostra seu bicho do mês 🐾 e lista seus treinos.\n\n`;
 
-  texto += `🎯 *Meta anual*\n`;
-  texto += `• /meta\n`;
-  texto += `  Mostra o progresso da sua meta anual de treinos.\n\n`;
+  text += `🎯 *Meta anual*\n`;
+  text += `• /meta\n`;
+  text += `  Mostra o progresso da sua meta anual de treinos.\n\n`;
 
-  texto += `• /meta NÚMERO\n`;
-  texto += `  Define a sua meta anual (ex.: /meta 150).\n\n`;
+  text += `• /meta NÚMERO\n`;
+  text += `  Define a sua meta anual (ex.: /meta 150).\n\n`;
 
-  texto += `📊 *Rankings*\n`;
-  texto += `• /ranking\n`;
-  texto += `  Ranking do mês atual.\n\n`;
+  text += `📊 *Rankings*\n`;
+  text += `• /ranking\n`;
+  text += `  Ranking do mês atual.\n\n`;
 
-  texto += `• /ranking MM/AAAA\n`;
-  texto += `  Ranking de um mês específico.\n\n`;
+  text += `• /ranking MM/AAAA\n`;
+  text += `  Ranking de um mês específico.\n\n`;
 
-  texto += `• /ranking DD/MM/AAAA DD/MM/AAAA\n`;
-  texto += `  Ranking por intervalo de datas.\n\n`;
+  text += `• /ranking DD/MM/AAAA DD/MM/AAAA\n`;
+  text += `  Ranking por intervalo de datas.\n\n`;
 
-  texto += `• /rankingano\n`;
-  texto += `  Ranking do ano atual.\n\n`;
+  text += `• /rankingano\n`;
+  text += `  Ranking do ano atual.\n\n`;
 
-  texto += `• /rankingano AAAA\n`;
-  texto += `  Ranking de um ano específico.\n\n`;
+  text += `• /rankingano AAAA\n`;
+  text += `  Ranking de um ano específico.\n\n`;
 
-  texto += `• /anografico\n`;
-  texto += `  Gráfico com o top 10 atletas do ano atual.\n\n`;
+  text += `• /anografico\n`;
+  text += `  Gráfico com o top 10 atletas do ano atual.\n\n`;
 
-  texto += `• /anografico AAAA\n`;
-  texto += `  Gráfico com o top 10 atletas de um ano específico.\n\n`;
+  text += `• /anografico AAAA\n`;
+  text += `  Gráfico com o top 10 atletas de um ano específico.\n\n`;
 
-  texto += `• /rankingmisterioso\n`;
-  texto += `  Ranking considerando apenas treinos em dias ímpares com lua cheia 🌕.\n\n`;
+  text += `• /rankingmisterioso\n`;
+  text += `  Ranking considerando apenas treinos em dias ímpares com lua cheia 🌕.\n\n`;
 
-  texto += `🐾 *Bicho do mês*\n`;
-  texto += `  Classificação individual (sem competir com ninguém): seu bicho\n`;
-  texto += `  evolui conforme seus treinos no mês, começando no 🥚 Ovo.\n`;
-  texto += `  Tem bicho lendário escondido pra quem chegar lá 👀\n`;
-  texto += `  Aparece no /ranking e em detalhe no /eu.\n\n`;
+  text += `🐾 *Bicho do mês*\n`;
+  text += `  Classificação individual (sem competir com ninguém): seu bicho\n`;
+  text += `  evolui conforme seus treinos no mês, começando no 🥚 Ovo.\n`;
+  text += `  Tem bicho lendário escondido pra quem chegar lá 👀\n`;
+  text += `  Aparece no /ranking e em detalhe no /eu.\n\n`;
 
-  texto += `🏆 *Campeões & Medalhas*\n`;
-  texto += `• /campeoes\n`;
-  texto += `  Ranking de campeões mensais acumulados.\n\n`;
+  text += `🏆 *Campeões & Medalhas*\n`;
+  text += `• /campeoes\n`;
+  text += `  Ranking de campeões mensais acumulados.\n\n`;
 
-  texto += `• /rankingolimpiada\n`;
-  texto += `  Quadro de medalhas do ano atual (🥇🥈🥉), só com meses já finalizados.\n\n`;
+  text += `• /rankingolimpiada\n`;
+  text += `  Quadro de medalhas do ano atual (🥇🥈🥉), só com meses já finalizados.\n\n`;
 
-  texto += `• /rankingolimpiada AAAA\n`;
-  texto += `  Quadro de medalhas de um ano específico.\n\n`;
+  text += `• /rankingolimpiada AAAA\n`;
+  text += `  Quadro de medalhas de um ano específico.\n\n`;
 
-  texto += `📦 *Wrapped*\n`;
-  texto += `• /wrapped\n`;
-  texto += `  Resumo completo do ano atual.\n\n`;
+  text += `📦 *Wrapped*\n`;
+  text += `• /wrapped\n`;
+  text += `  Resumo completo do ano atual.\n\n`;
 
-  texto += `• /wrapped AAAA\n`;
-  texto += `  Resumo completo de um ano específico.\n\n`;
+  text += `• /wrapped AAAA\n`;
+  text += `  Resumo completo de um ano específico.\n\n`;
 
-  texto += `🎫 *Tickets*\n`;
-  texto += `• /ticket sua mensagem\n`;
-  texto += `  Abre um ticket com sugestão ou solicitação.\n\n`;
+  text += `🎫 *Tickets*\n`;
+  text += `• /ticket sua mensagem\n`;
+  text += `  Abre um ticket com sugestão ou solicitação.\n\n`;
 
-  texto += `• /tickets\n`;
-  texto += `  Lista todos os seus tickets e o status de cada um.\n\n`;
+  text += `• /tickets\n`;
+  text += `  Lista todos os seus tickets e o status de cada um.\n\n`;
 
-  texto += `• /ticketstatus ID\n`;
-  texto += `  Consulta o status de um ticket específico.\n\n`;
+  text += `• /ticketstatus ID\n`;
+  text += `  Consulta o status de um ticket específico.\n\n`;
 
-  texto += `❓ *Ajuda*\n`;
-  texto += `• /ajuda\n`;
-  texto += `  Mostra esta mensagem.\n\n`;
+  text += `❓ *Ajuda*\n`;
+  text += `• /ajuda\n`;
+  text += `  Mostra esta mensagem.\n\n`;
 
-  texto += `ℹ️ *Observações*\n`;
-  texto += `• Alguns comandos podem exigir cadastro prévio.\n`;
-  texto += `• Rankings consideram empates corretamente.\n`;
-  texto += `• Sequência é baseada em dias consecutivos de treino.\n`;
+  text += `ℹ️ *Observações*\n`;
+  text += `• Alguns comandos podem exigir cadastro prévio.\n`;
+  text += `• Rankings consideram empates corretamente.\n`;
+  text += `• Sequência é baseada em dias consecutivos de treino.\n`;
 
-  return texto.trim();
+  return text.trim();
 }

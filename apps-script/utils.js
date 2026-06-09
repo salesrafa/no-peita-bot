@@ -1,123 +1,123 @@
-function formatarWrappedOlimpiada(ranking) {
+function formatWrappedOlympics(ranking) {
   if (!ranking || ranking.length === 0) {
     return "🏅 *Quadro de medalhas*\n\nNenhuma medalha registrada.";
   }
 
-  let texto = `🏅 *Quadro de medalhas*\n\n`;
+  let text = `🏅 *Quadro de medalhas*\n\n`;
 
   ranking.forEach((r, index) => {
-    texto +=
-      `${index + 1} - *${r.nome}*  ` +
-      `🥇 ${r.ouro}  🥈 ${r.prata}  🥉 ${r.bronze}\n`;
+    text +=
+      `${index + 1} - *${r.name}*  ` +
+      `🥇 ${r.gold}  🥈 ${r.silver}  🥉 ${r.bronze}\n`;
   });
 
-  return texto.trim();
+  return text.trim();
 }
 
-function formatarWrappedCampeoes(lista) {
+function formatWrappedChampions(lista) {
   if (!lista || lista.length === 0) {
     return "📅 *Campeões do ano*\n\nNenhum campeão registrado.";
   }
 
-  let texto = `📅 *Campeões do ano*\n\n`;
+  let text = `📅 *Campeões do ano*\n\n`;
 
   lista.forEach(item => {
-    texto += `🗓️ *${item.mesNome}*\n`;
+    text += `🗓️ *${item.monthName}*\n`;
 
-    if (item.ouro.length > 0) {
-      texto += `🥇 ${item.ouro.join(", ")}\n`;
+    if (item.gold.length > 0) {
+      text += `🥇 ${item.gold.join(", ")}\n`;
     }
 
-    if (item.prata.length > 0) {
-      texto += `🥈 ${item.prata.join(", ")}\n`;
+    if (item.silver.length > 0) {
+      text += `🥈 ${item.silver.join(", ")}\n`;
     }
 
     if (item.bronze.length > 0) {
-      texto += `🥉 ${item.bronze.join(", ")}\n`;
+      text += `🥉 ${item.bronze.join(", ")}\n`;
     }
 
-    texto += `\n`;
+    text += `\n`;
   });
 
-  return texto.trim();
+  return text.trim();
 }
 
-function ordenarRankingOlimpico(medalhas) {
-  return Object.values(medalhas).sort((a, b) => {
-    if (b.ouro !== a.ouro) return b.ouro - a.ouro;
-    if (b.prata !== a.prata) return b.prata - a.prata;
+function sortOlympicRanking(medals) {
+  return Object.values(medals).sort((a, b) => {
+    if (b.gold !== a.gold) return b.gold - a.gold;
+    if (b.silver !== a.silver) return b.silver - a.silver;
     if (b.bronze !== a.bronze) return b.bronze - a.bronze;
-    return a.nome.localeCompare(b.nome);
+    return a.name.localeCompare(b.name);
   });
 }
 
-function inicializarAtleta(nome, medalhas) {
-  if (!medalhas[nome]) {
-    medalhas[nome] = {
-      nome,
-      ouro: 0,
-      prata: 0,
+function initAthlete(name, medals) {
+  if (!medals[name]) {
+    medals[name] = {
+      name,
+      gold: 0,
+      silver: 0,
       bronze: 0
     };
   }
 }
 
-function gerarRankingOlimpicoPorAno(ano) {
-  const campeoesPorMes = getCampeoesPorMes(ano);
-  const medalhas = {}; // nome -> contadores
+function generateOlympicRankingByYear(year) {
+  const championsByMonth = getChampionsByMonth(year);
+  const medals = {}; // name -> contadores
 
-  campeoesPorMes.forEach(mes => {
-    mes.ouro.forEach(nome => {
-      inicializarAtleta(nome, medalhas);
-      medalhas[nome].ouro++;
+  championsByMonth.forEach(month => {
+    month.gold.forEach(name => {
+      initAthlete(name, medals);
+      medals[name].gold++;
     });
 
-    mes.prata.forEach(nome => {
-      inicializarAtleta(nome, medalhas);
-      medalhas[nome].prata++;
+    month.silver.forEach(name => {
+      initAthlete(name, medals);
+      medals[name].silver++;
     });
 
-    mes.bronze.forEach(nome => {
-      inicializarAtleta(nome, medalhas);
-      medalhas[nome].bronze++;
+    month.bronze.forEach(name => {
+      initAthlete(name, medals);
+      medals[name].bronze++;
     });
   });
 
-  return ordenarRankingOlimpico(medalhas);
+  return sortOlympicRanking(medals);
 }
 
-function getCampeoesPorMes(ano) {
-  const resultado = [];
-  const agora = new Date();
+function getChampionsByMonth(year) {
+  const result = [];
+  const now = new Date();
 
-  for (let mes = 0; mes < 12; mes++) {
-    const inicio = new Date(ano, mes, 1, 0, 0, 0, 0);
-    const fim = new Date(ano, mes + 1, 0, 23, 59, 59, 999);
+  for (let month = 0; month < 12; month++) {
+    const start = new Date(year, month, 1, 0, 0, 0, 0);
+    const end = new Date(year, month + 1, 0, 23, 59, 59, 999);
 
-    // Considera apenas meses ja finalizados: o mes corrente (ainda em andamento)
-    // e os meses futuros ficam de fora do quadro de medalhas/campeoes.
-    if (fim.getTime() >= agora.getTime()) continue;
+    // Only fully finished months: the current month (still ongoing)
+    // and future months are excluded from the medals/champions board.
+    if (end.getTime() >= now.getTime()) continue;
 
-    const ranking = gerarRankingPorPeriodo(inicio, fim);
+    const ranking = generateRankingForPeriod(start, end);
     if (!ranking || ranking.length === 0) continue;
 
-    const ouro = ranking.filter(r => r.rank === 1).map(r => r.nome);
-    const prata = ranking.filter(r => r.rank === 2).map(r => r.nome);
-    const bronze = ranking.filter(r => r.rank === 3).map(r => r.nome);
+    const gold = ranking.filter(r => r.rank === 1).map(r => r.name);
+    const silver = ranking.filter(r => r.rank === 2).map(r => r.name);
+    const bronze = ranking.filter(r => r.rank === 3).map(r => r.name);
 
-    resultado.push({
-      mes: mes + 1,
-      mesNome: getNomeMesEmPortugues(mes),
-      ouro,
-      prata,
+    result.push({
+      month: month + 1,
+      monthName: getMonthNamePtBr(month),
+      gold,
+      silver,
       bronze
     });
   }
 
-  return resultado;
+  return result;
 }
 
-function gerarGraficoRanking(ranking, label) {
+function generateRankingChart(ranking, label) {
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
@@ -129,20 +129,20 @@ function gerarGraficoRanking(ranking, label) {
 
   sheet.clear();
 
-  // Cabeçalho
+  // Header
   sheet.getRange(1, 1, 1, 2).setValues([["Nome", "Treinos"]]);
 
   const top = ranking.slice(0, 10);
-  const linhas = top.map(r => [r.nome, r.total]);
-  sheet.getRange(2, 1, linhas.length, 2).setValues(linhas);
+  const rows = top.map(r => [r.name, r.total]);
+  sheet.getRange(2, 1, rows.length, 2).setValues(rows);
 
-  // Remove gráficos antigos
+  // Remove old charts
   sheet.getCharts().forEach(c => sheet.removeChart(c));
 
-  // Cria gráfico
+  // Create chart
   const chart = sheet.newChart()
     .setChartType(Charts.ChartType.COLUMN)
-    .addRange(sheet.getRange(1, 1, linhas.length + 1, 2))
+    .addRange(sheet.getRange(1, 1, rows.length + 1, 2))
     .setPosition(1, 4, 0, 0)
     .setOption("title", label)
     .setOption("legend", { position: "none" })
@@ -157,118 +157,118 @@ function gerarGraficoRanking(ranking, label) {
   const file = DriveApp.createFile(blob)
     .setName(`ranking-${label}.png`);
 
-  // 🔓 TORNA O ARQUIVO PÚBLICO
+  // 🔓 MAKE THE FILE PUBLIC
   file.setSharing(
     DriveApp.Access.ANYONE_WITH_LINK,
     DriveApp.Permission.VIEW
   );
 
-  // 🔗 Retorna link acessível pelo WhatsApp
+  // 🔗 Return a link accessible from WhatsApp
   return file.getUrl();
 }
 
-function getPeriodoPorAno(body) {
-  const texto = (body || "").trim();
-  const partes = texto.split(/\s+/);
+function getPeriodByYear(body) {
+  const text = (body || "").trim();
+  const parts = text.split(/\s+/);
 
-  const agora = new Date();
-  let ano = agora.getFullYear();
+  const now = new Date();
+  let year = now.getFullYear();
 
   // /rankingano 2025
-  if (partes.length === 2 && /^\d{4}$/.test(partes[1])) {
-    ano = parseInt(partes[1], 10);
+  if (parts.length === 2 && /^\d{4}$/.test(parts[1])) {
+    year = parseInt(parts[1], 10);
   }
 
-  const inicio = new Date(ano, 0, 1, 0, 0, 0, 0);
-  const fim = new Date(ano, 11, 31, 23, 59, 59, 999);
+  const start = new Date(year, 0, 1, 0, 0, 0, 0);
+  const end = new Date(year, 11, 31, 23, 59, 59, 999);
 
   return {
-    inicio,
-    fim,
-    label: `Ranking ${ano}`
+    start,
+    end,
+    label: `Ranking ${year}`
   };
 }
 
-function getPeriodoPorMensagem(body) {
-  const texto = (body || "").trim();
-  const partes = texto.split(/\s+/);
+function getPeriodFromMessage(body) {
+  const text = (body || "").trim();
+  const parts = text.split(/\s+/);
 
-  const hoje = new Date();
-  hoje.setHours(23, 59, 59, 999);
+  const today = new Date();
+  today.setHours(23, 59, 59, 999);
 
-  // padrão: mês atual
-  let inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-  let fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 23, 59, 59, 999);
-  let label = `${getNomeMesEmPortugues(hoje.getMonth())}/${hoje.getFullYear()}`;
-  let tipo = "mes"; // "mes" (mês inteiro) | "intervalo" (range de datas)
+  // default: current month
+  let start = new Date(today.getFullYear(), today.getMonth(), 1);
+  let end = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
+  let label = `${getMonthNamePtBr(today.getMonth())}/${today.getFullYear()}`;
+  let type = "mes"; // "mes" (mês inteiro) | "intervalo" (range de datas)
 
   // /ranking MM/AAAA
-  if (partes.length === 2 && /^\d{2}\/\d{4}$/.test(partes[1])) {
-    const [mm, yyyy] = partes[1].split("/");
-    const mes = parseInt(mm, 10) - 1;
-    const ano = parseInt(yyyy, 10);
+  if (parts.length === 2 && /^\d{2}\/\d{4}$/.test(parts[1])) {
+    const [mm, yyyy] = parts[1].split("/");
+    const month = parseInt(mm, 10) - 1;
+    const year = parseInt(yyyy, 10);
 
-    inicio = new Date(ano, mes, 1);
-    fim = new Date(ano, mes + 1, 0, 23, 59, 59, 999);
-    label = `${getNomeMesEmPortugues(mes)}/${ano}`;
+    start = new Date(year, month, 1);
+    end = new Date(year, month + 1, 0, 23, 59, 59, 999);
+    label = `${getMonthNamePtBr(month)}/${year}`;
   }
 
   // /ranking DD/MM/AAAA DD/MM/AAAA
   if (
-    partes.length === 3 &&
-    /^\d{2}\/\d{2}\/\d{4}$/.test(partes[1]) &&
-    /^\d{2}\/\d{2}\/\d{4}$/.test(partes[2])
+    parts.length === 3 &&
+    /^\d{2}\/\d{2}\/\d{4}$/.test(parts[1]) &&
+    /^\d{2}\/\d{2}\/\d{4}$/.test(parts[2])
   ) {
-    inicio = parseDataBR(partes[1], true);
-    fim = parseDataBR(partes[2], false);
-    label = `${partes[1]} → ${partes[2]}`;
-    tipo = "intervalo";
+    start = parseBrDate(parts[1], true);
+    end = parseBrDate(parts[2], false);
+    label = `${parts[1]} → ${parts[2]}`;
+    type = "intervalo";
   }
 
-  return { inicio, fim, label, tipo };
+  return { start, end, label, type };
 }
 
-// Classificação secundária, individual e não-comparativa: cada faixa exige um
-// total fixo de treinos no mês. Reordenada do mais fraco ao lendário. O nível
-// é só do desempenho da própria pessoa — não depende dos outros.
-const BICHOS = [
-  { min: 0,  emoji: "🥚", nome: "Ovo",       vibe: "ainda não chocou no mês" },
-  { min: 1,  emoji: "🐔", nome: "Frango",    vibe: "tá começando!" },
-  { min: 2,  emoji: "🐢", nome: "Tartaruga", vibe: "devagar, mas não parou" },
-  { min: 3,  emoji: "🐰", nome: "Coelho",    vibe: "ligou o foguinho" },
-  { min: 5,  emoji: "🐶", nome: "Cachorro",  vibe: "animado e fiel ao treino" },
-  { min: 7,  emoji: "🦊", nome: "Raposa",    vibe: "esperto, achou o ritmo" },
-  { min: 9,  emoji: "🐗", nome: "Javali",    vibe: "brutão, entrou com tudo" },
-  { min: 12, emoji: "🐺", nome: "Lobo",      vibe: "entrou na alcateia" },
-  { min: 15, emoji: "🐆", nome: "Onça",      vibe: "predador ágil" },
-  { min: 18, emoji: "🐅", nome: "Tigre",     vibe: "fera de respeito" },
-  { min: 21, emoji: "🐻", nome: "Urso",      vibe: "força bruta" },
-  { min: 25, emoji: "🦁", nome: "Leão",      vibe: "rei do mês" },
-  // secreto: nunca é antecipado (ajuda/aviso/“faltam X”); só aparece quando
-  // alguém de fato o conquista — é a surpresa do topo.
-  { min: 29, emoji: "🐉", nome: "Dragão",    vibe: "lendário, fora da curva", secreto: true },
+// Secondary, individual, non-comparative ranking: each tier requires a fixed
+// number of workouts in the month, ordered from weakest to legendary. The tier
+// reflects only the person's own performance — it doesn't depend on others.
+const ANIMALS = [
+  { min: 0,  emoji: "🥚", name: "Ovo",       vibe: "ainda não chocou no mês" },
+  { min: 1,  emoji: "🐔", name: "Frango",    vibe: "tá começando!" },
+  { min: 2,  emoji: "🐢", name: "Tartaruga", vibe: "devagar, mas não parou" },
+  { min: 3,  emoji: "🐰", name: "Coelho",    vibe: "ligou o foguinho" },
+  { min: 5,  emoji: "🐶", name: "Cachorro",  vibe: "animado e fiel ao treino" },
+  { min: 7,  emoji: "🦊", name: "Raposa",    vibe: "esperto, achou o ritmo" },
+  { min: 9,  emoji: "🐗", name: "Javali",    vibe: "brutão, entrou com tudo" },
+  { min: 12, emoji: "🐺", name: "Lobo",      vibe: "entrou na alcateia" },
+  { min: 15, emoji: "🐆", name: "Onça",      vibe: "predador ágil" },
+  { min: 18, emoji: "🐅", name: "Tigre",     vibe: "fera de respeito" },
+  { min: 21, emoji: "🐻", name: "Urso",      vibe: "força bruta" },
+  { min: 25, emoji: "🦁", name: "Leão",      vibe: "rei do mês" },
+  // secret: never previewed (help/notice/"remaining X"); only shows up once
+  // someone actually earns it — it's the surprise at the top.
+  { min: 29, emoji: "🐉", name: "Dragão",    vibe: "lendário, fora da curva", secret: true },
 ];
 
-// Dado o total de treinos no mês, retorna { atual, proximo, faltam }.
-// proximo é null quando já se atingiu o topo (Dragão).
-function classificarBicho(total) {
+// Given the month's workout total, returns { current, next, remaining }.
+// `next` is null when the top tier (Dragão) has been reached.
+function classifyAnimal(total) {
   const n = Number(total) || 0;
   let idx = 0;
-  for (let i = 0; i < BICHOS.length; i++) {
-    if (n >= BICHOS[i].min) idx = i; else break;
+  for (let i = 0; i < ANIMALS.length; i++) {
+    if (n >= ANIMALS[i].min) idx = i; else break;
   }
-  const atual = BICHOS[idx];
-  const proximo = idx < BICHOS.length - 1 ? BICHOS[idx + 1] : null;
-  const faltam = proximo ? proximo.min - n : 0;
-  return { atual, proximo, faltam };
+  const current = ANIMALS[idx];
+  const next = idx < ANIMALS.length - 1 ? ANIMALS[idx + 1] : null;
+  const remaining = next ? next.min - n : 0;
+  return { current, next, remaining };
 }
 
-function formatarRanking(ranking, titulo, mostrarBicho) {
+function formatRanking(ranking, titulo, mostrarBicho) {
   if (ranking.length === 0) {
     return "📊 Nenhum treino encontrado no período.";
   }
 
-  let texto = `📊 *${titulo}*\n\n`;
+  let text = `📊 *${titulo}*\n\n`;
 
   ranking.forEach(r => {
     const medal =
@@ -276,38 +276,38 @@ function formatarRanking(ranking, titulo, mostrarBicho) {
       r.rank === 2 ? "🥈 " :
       r.rank === 3 ? "🥉 " : "";
 
-    // Selo do bicho só nos rankings mensais (faixa é meta mensal fixa).
-    const bicho = mostrarBicho ? ` ${classificarBicho(r.total).atual.emoji}` : "";
+    // Animal badge only on monthly rankings (the tier is a fixed monthly goal).
+    const bicho = mostrarBicho ? ` ${classifyAnimal(r.total).current.emoji}` : "";
 
-    texto += `${r.rank} - ${medal}*${r.nome}* - ${r.total} treino(s) - 🔥 ${r.sequencia}${bicho}\n`;
+    text += `${r.rank} - ${medal}*${r.name}* - ${r.total} treino(s) - 🔥 ${r.streak}${bicho}\n`;
   });
 
-  let resultado = texto.trim();
+  let result = text.trim();
 
-  // Dica do bicho só quando os selos estão sendo exibidos (rankings mensais).
-  // Emoji neutro de propósito — não revela o bicho secreto do topo.
+  // Animal hint only when badges are shown (monthly rankings).
+  // Deliberately neutral emoji — doesn't reveal the secret top animal.
   if (mostrarBicho) {
-    resultado += `\n\n🐾 Use /eu para entender seu bicho do mês.`;
+    result += `\n\n🐾 Use /eu para entender seu bicho do mês.`;
   }
 
-  return resultado;
+  return result;
 }
 
-function aplicarColocacaoComEmpate(linhas) {
+function applyRankWithTies(rows) {
   let prevTotal = null;
   let prevSeq = null;
   let prevRank = 0;
 
-  return linhas.map((item, index) => {
+  return rows.map((item, index) => {
     let rank;
-    if (item.total === prevTotal && item.sequencia === prevSeq) {
+    if (item.total === prevTotal && item.streak === prevSeq) {
       rank = prevRank;
     } else {
       rank = index + 1;
     }
 
     prevTotal = item.total;
-    prevSeq = item.sequencia;
+    prevSeq = item.streak;
     prevRank = rank;
 
     return {
@@ -317,86 +317,86 @@ function aplicarColocacaoComEmpate(linhas) {
   });
 }
 
-// filtroDataFn (opcional): recebe a data de cada treino diario e devolve
-// true/false para inclui-lo. Quando informado, os treinos agregados (AB,
-// pre-bot) sao ignorados, pois sao totais mensais sem data por dia e nao
-// dao para filtrar por dia (ex: ranking misterioso por datas de lua cheia).
-function gerarRankingPorPeriodo(dataInicio, dataFim, filtroDataFn) {
+// dateFilterFn (optional): receives each daily workout's date and returns
+// true/false to include it. When provided, aggregated workouts (AB, pre-bot)
+// are ignored, since they are monthly totals without per-day dates and can't
+// be filtered by day (e.g. mystery ranking by full-moon dates).
+function generateRankingForPeriod(startDate, endDate, filtroDataFn) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-  const sheetAB = ss.getSheetByName(SHEETS.WORKOUTS_AB);
-  const dadosAB = sheetAB ? sheetAB.getDataRange().getValues() : [];
+  const abSheet = ss.getSheetByName(SHEETS.WORKOUTS_AB);
+  const abRows = abSheet ? abSheet.getDataRange().getValues() : [];
 
-  const mapas = getIdentityMaps();
+  const maps = getIdentityMaps();
   const uuidParaNome = getUuidToNameMap();
 
-  const porPessoa = {}; // uuid -> { nome, datas: [], totalAB: number }
+  const porPessoa = {}; // uuid -> { name, datas: [], totalAB: number }
 
-  // Garante o bucket de um uuid, resolvendo o nome canônico de exibição.
+  // Ensures a uuid's bucket, resolving the canonical display name.
   function bucket(uuid, nomeFallback) {
     if (!porPessoa[uuid]) {
       porPessoa[uuid] = {
-        nome: uuidParaNome[uuid] || nomeFallback || uuid,
-        datas: [],
+        name: uuidParaNome[uuid] || nomeFallback || uuid,
+        dates: [],
         totalAB: 0,
       };
     }
     return porPessoa[uuid];
   }
 
-  // ---------- treinos diários (pós-bot) ----------
-  readWorkouts(mapas).forEach(t => {
-    if (t.date < dataInicio || t.date > dataFim) return;
+  // ---------- daily workouts (post-bot) ----------
+  readWorkouts(maps).forEach(t => {
+    if (t.date < startDate || t.date > endDate) return;
     if (filtroDataFn && !filtroDataFn(t.date)) return;
     if (!t.uuid) return;
 
-    bucket(t.uuid, t.name).datas.push(new Date(t.date));
+    bucket(t.uuid, t.name).dates.push(new Date(t.date));
   });
 
-  // ---------- treinos agregados (pré-bot | SOMENTE 2025) ----------
+  // ---------- aggregated workouts (pre-bot | 2025 ONLY) ----------
   const ANO_AB = 2025;
 
-  // só considera AB se o período tocar 2025 e não houver filtro por data
-  // (totais mensais não têm data por dia para aplicar o filtro)
+  // only consider AB if the period touches 2025 and there's no date filter
+  // (monthly totals have no per-day date to apply the filter)
   if (
     !filtroDataFn &&
-    dataInicio.getFullYear() <= ANO_AB &&
-    dataFim.getFullYear() >= ANO_AB
+    startDate.getFullYear() <= ANO_AB &&
+    endDate.getFullYear() >= ANO_AB
   ) {
-    for (let i = 1; i < dadosAB.length; i++) {
-      const [nome, total, mes] = dadosAB[i];
-      if (!nome || !total || !mes) continue;
+    for (let i = 1; i < abRows.length; i++) {
+      const [name, total, month] = abRows[i];
+      if (!name || !total || !month) continue;
 
-      const inicioMes = new Date(ANO_AB, mes - 1, 1);
-      const fimMes = new Date(ANO_AB, mes, 0, 23, 59, 59, 999);
+      const monthStart = new Date(ANO_AB, month - 1, 1);
+      const monthEnd = new Date(ANO_AB, month, 0, 23, 59, 59, 999);
 
-      // mês fora do intervalo → ignora
-      if (fimMes < dataInicio || inicioMes > dataFim) continue;
+      // month outside the range → skip
+      if (monthEnd < startDate || monthStart > endDate) continue;
 
-      // treinos-AB só têm nome; resolve por nome (fallback ao próprio nome).
-      const uuid = mapas.byName[String(nome).trim()] || String(nome).trim();
-      bucket(uuid, nome).totalAB += Number(total);
+      // treinos-AB only has a name; resolve by name (fallback to the name itself).
+      const uuid = maps.byName[String(name).trim()] || String(name).trim();
+      bucket(uuid, name).totalAB += Number(total);
     }
   }
 
-  return calcularMetricasRankingComAB(porPessoa);
+  return computeRankingMetricsWithAB(porPessoa);
 }
 
-function calcularMetricasRankingComAB(porPessoa) {
-  const linhas = Object.entries(porPessoa).map(([uuid, info]) => {
-    const nome = info.nome;
-    const datas = info.datas;
+function computeRankingMetricsWithAB(porPessoa) {
+  const rows = Object.entries(porPessoa).map(([uuid, info]) => {
+    const name = info.name;
+    const dates = info.dates;
 
-    const diasUnicos = Array.from(
-      new Set(datas.map(d =>
+    const uniqueDays = Array.from(
+      new Set(dates.map(d =>
         new Date(d.getFullYear(), d.getMonth(), d.getDate()).toDateString()
       ))
     ).map(s => new Date(s)).sort((a, b) => a - b);
 
-    // sequência só com dados diários
+    // streak only from daily rows
     let maiorSeq = 0, atualSeq = 0, anterior = null;
-    for (const d of diasUnicos) {
-      if (anterior && diasEntreDatas(anterior, d) === 1) {
+    for (const d of uniqueDays) {
+      if (anterior && daysBetween(anterior, d) === 1) {
         atualSeq += 1;
       } else {
         atualSeq = 1;
@@ -406,19 +406,19 @@ function calcularMetricasRankingComAB(porPessoa) {
     }
 
     return {
-      nome,
-      total: diasUnicos.length + info.totalAB,
-      sequencia: maiorSeq
+      name,
+      total: uniqueDays.length + info.totalAB,
+      streak: maiorSeq
     };
   });
 
-  linhas.sort((a, b) => {
+  rows.sort((a, b) => {
     if (b.total !== a.total) return b.total - a.total;
-    if (b.sequencia !== a.sequencia) return b.sequencia - a.sequencia;
+    if (b.streak !== a.streak) return b.streak - a.streak;
     return 0;
   });
 
-  return aplicarColocacaoComEmpate(linhas);
+  return applyRankWithTies(rows);
 }
 
 function getUserByIdentifier(identifier) {
@@ -540,58 +540,58 @@ function readWorkouts(maps) {
   return workouts;
 }
 
-function formatarData(data) {
-  const dia = String(data.getDate()).padStart(2, '0');
-  const mes = String(data.getMonth() + 1).padStart(2, '0');
-  const ano = data.getFullYear();
-  return `${dia}/${mes}/${ano}`;
+function formatDate(date) {
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
 }
 
-function getNomeMesEmPortugues(mesNumero) {
+function getMonthNamePtBr(monthNumber) {
   const nomes = [
     "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
     "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
   ];
-  return nomes[mesNumero];
+  return nomes[monthNumber];
 }
 
-function diasEntreDatas(d1, d2) {
+function daysBetween(d1, d2) {
   const a = new Date(d1.getFullYear(), d1.getMonth(), d1.getDate());
   const b = new Date(d2.getFullYear(), d2.getMonth(), d2.getDate());
   return Math.round((b - a) / (1000 * 60 * 60 * 24));
 }
 
-function parseDataBR(texto, inicioDoDia) {
-  const [dd, mm, yyyy] = texto.split("/");
-  const data = new Date(
+function parseBrDate(text, inicioDoDia) {
+  const [dd, mm, yyyy] = text.split("/");
+  const date = new Date(
     parseInt(yyyy, 10),
     parseInt(mm, 10) - 1,
     parseInt(dd, 10)
   );
 
   if (inicioDoDia) {
-    data.setHours(0, 0, 0, 0);
+    date.setHours(0, 0, 0, 0);
   } else {
-    data.setHours(23, 59, 59, 999);
+    date.setHours(23, 59, 59, 999);
   }
 
-  return data;
+  return date;
 }
 
-function jaTreinouNaData(identificador, data) {
-  const usuario = getUserByIdentifier(identificador);
-  if (!usuario) return false;
+function workedOutOnDate(identifier, date) {
+  const user = getUserByIdentifier(identifier);
+  if (!user) return false;
 
-  // uuid canônico; cai para o id_whatsapp enquanto a migração não rodou.
-  const uuidUsuario = usuario.uuid || usuario.whatsappId;
+  // canonical uuid; falls back to id_whatsapp until the migration has run.
+  const uuidUsuario = user.uuid || user.whatsappId;
 
-  const dataRef = new Date(
-    data.getFullYear(),
-    data.getMonth(),
-    data.getDate()
+  const dateRef = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate()
   ).getTime();
 
-  // 🔑 compara pelo uuid canônico resolvido (readWorkouts já resolve)
+  // 🔑 compare by the resolved canonical uuid (readWorkouts already resolves it)
   return readWorkouts().some(t => {
     if (t.uuid !== uuidUsuario) return false;
     const dTime = new Date(
@@ -599,6 +599,6 @@ function jaTreinouNaData(identificador, data) {
       t.date.getMonth(),
       t.date.getDate()
     ).getTime();
-    return dTime === dataRef;
+    return dTime === dateRef;
   });
 }

@@ -3,20 +3,20 @@ import { url, scriptAuthToken } from '../config';
 
 let adminSet = new Set<string>();
 
-export async function carregarAdmins(): Promise<void> {
+export async function loadAdmins(): Promise<void> {
   try {
     const { data } = await axios.get(
       `${url}?action=getAdmins&token=${encodeURIComponent(scriptAuthToken)}`
     );
-    adminSet = new Set(data.map((u: any) => String(u.numero)));
-    console.log(`✅ Admins carregados: ${[...adminSet].join(', ')}`);
+    adminSet = new Set(data.map((u: any) => String(u.number)));
+    console.log(`✅ Admins loaded: ${[...adminSet].join(', ')}`);
   } catch (err) {
-    console.error('❌ Erro ao carregar admins:', err);
+    console.error('❌ Error loading admins:', err);
   }
 }
 
-export function isAdmin(numero: string): boolean {
-  return adminSet.has(numero);
+export function isAdmin(number: string): boolean {
+  return adminSet.has(number);
 }
 
 export function getAdminsList(): string[] {

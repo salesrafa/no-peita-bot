@@ -1,9 +1,9 @@
 import { Client, Message } from 'whatsapp-web.js';
 import { environment, allowedContacts } from '../config';
 import { handleMessage } from './scriptApi';
-import { carregarAdmins, isAdmin } from './adminService';
+import { loadAdmins, isAdmin } from './adminService';
 
-let ultimaQr = "";
+let lastQr = "";
 
 const client = new Client({
   puppeteer: {
@@ -16,7 +16,7 @@ const client = new Client({
 export function initClient(): void {
 
   client.on('ready', async () => {
-  console.log('🤖 Bot pronto');
+  console.log('🤖 Bot ready');
 
   await client.pupPage?.evaluate(() => {
     const w = window as any;
@@ -27,12 +27,12 @@ export function initClient(): void {
   });
 });
 
-  carregarAdmins(); // ✅ carrega admins antes de inicializar
+  loadAdmins(); // ✅ load admins before initializing
   client.initialize();
 
   client.on('qr', (qr: string) => {
     if (environment === 'prod') {
-      ultimaQr = qr;
+      lastQr = qr;
     } else {
       console.log('🟡 QR RECEIVED:\n', qr);
     }
@@ -50,14 +50,14 @@ export function initClient(): void {
     if (environment !== 'prod' && !isAllowed) return;
 
     try {
-      await handleMessage(msg, client, ultimaQr);
+      await handleMessage(msg, client, lastQr);
     } catch (err) {
-      console.error('Erro ao processar mensagem:', err);
+      console.error('Error processing message:', err);
       await msg.reply('⚠️ Ocorreu um erro ao processar seu comando.');
     }
   });
 }
 
-export function getUltimaQr(): string {
-  return ultimaQr;
+export function getLastQr(): string {
+  return lastQr;
 }

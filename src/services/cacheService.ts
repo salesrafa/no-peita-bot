@@ -2,22 +2,22 @@ import dayjs from 'dayjs';
 import { Moon, Hemisphere } from 'lunarphase-js';
 
 /**
- * Gera uma lista de datas em que houve lua cheia no mês e ano especificados.
- * As datas retornadas estão no formato DD/MM/YYYY.
+ * Generates a list of dates with a full moon in the given month and year.
+ * The returned dates are in DD/MM/YYYY format.
  */
-export function gerarDatasLuaCheia(ano: number, mes: number): string[] {
-  const datas: string[] = [];
+export function generateFullMoonDates(year: number, month: number): string[] {
+  const dates: string[] = [];
 
-  for (let dia = 1; dia <= 31; dia++) {
-    const data = dayjs(`${ano}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`);
-    if (!data.isValid()) continue;
+  for (let day = 1; day <= 31; day++) {
+    const date = dayjs(`${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
+    if (!date.isValid()) continue;
 
-    const fase = Moon.lunarPhase(data.toDate(), { hemisphere: Hemisphere.SOUTHERN });
+    const phase = Moon.lunarPhase(date.toDate(), { hemisphere: Hemisphere.SOUTHERN });
 
-    if (fase === 'Full') {
-      datas.push(data.format('DD/MM/YYYY'));
+    if (phase === 'Full') {
+      dates.push(date.format('DD/MM/YYYY'));
     }
   }
 
-  return datas;
+  return dates;
 }
