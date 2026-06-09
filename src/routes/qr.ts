@@ -1,11 +1,11 @@
 import express, { Request, Response } from 'express';
 import QRCode from 'qrcode';
-import { getUltimaQr } from '../services/whatsappService';
+import { getLastQr } from '../services/whatsappService';
 
 const router = express.Router();
 
 router.get('/', async (req: Request, res: Response) => {
-  const qr = getUltimaQr();
+  const qr = getLastQr();
 
   if (!qr) {
     return res.send('❌ QR Code ainda não gerado. Aguarde a inicialização do cliente.');

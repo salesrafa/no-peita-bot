@@ -1,23 +1,23 @@
-// Confere o token compartilhado (Script Property AUTH_TOKEN) contra o
-// parametro 'token' da requisicao. Como o web app e ANYONE_ANONYMOUS, e
-// esse token que impede acesso anonimo mesmo com a URL publica.
-function autorizado(e) {
-  const esperado = PropertiesService.getScriptProperties().getProperty('AUTH_TOKEN');
-  const recebido = (e && e.parameter && e.parameter.token) || '';
-  return Boolean(esperado) && recebido === esperado;
+// Checks the shared token (Script Property AUTH_TOKEN) against the request's
+// 'token' parameter. Since the web app is ANYONE_ANONYMOUS, this token is what
+// prevents anonymous access even with the public URL.
+function isAuthorized(e) {
+  const expected = PropertiesService.getScriptProperties().getProperty('AUTH_TOKEN');
+  const received = (e && e.parameter && e.parameter.token) || '';
+  return Boolean(expected) && received === expected;
 }
 
 function doGet(e) {
-  if (!autorizado(e)) {
+  if (!isAuthorized(e)) {
     return ContentService.createTextOutput('unauthorized');
   }
 
   const action = e.parameter.action;
 
   switch (action) {
-    case 'precisaAtualizarCaches':
+    case 'pendingCacheUpdates':
       return ContentService
-        .createTextOutput(JSON.stringify(precisaAtualizarCaches()))
+        .createTextOutput(JSON.stringify(pendingCacheUpdates()))
         .setMimeType(ContentService.MimeType.JSON);
     case 'getAdmins':
       return getAdmins();
@@ -27,62 +27,62 @@ function doGet(e) {
 }
 
 function doPost(e) {
-  if (!autorizado(e)) {
+  if (!isAuthorized(e)) {
     return ContentService.createTextOutput('unauthorized');
   }
 
   let responseText = '';
-  const mensagem = (e.parameter.Body || "").trim();
-  const partes = mensagem.split(" ");
-  const comando = partes[0].toLowerCase(); // a primeira palavra da mensagem
+  const message = (e.parameter.Body || "").trim();
+  const parts = message.split(" ");
+  const command = parts[0].toLowerCase(); // a primeira palavra da mensagem
 
-  handleMessageLog(e, comando);
+  logMessage(e, command);
 
-  switch (comando) {
+  switch (command) {
     case '/cadastro':
-      responseText = handleCadastro(e);
+      responseText = handleRegister(e);
       break;
     case '/pontuat':
       responseText = "_Você quis dizer:_ */pontuar* ?";
       break;
     case '/pontuar':
-      responseText = handlePontuar(e);
+      responseText = handleScore(e);
       break;
     case '/apagar':
-      responseText = handleApagarTreino(e);
+      responseText = handleDeleteWorkout(e);
       break;
     case '/anografico':
-      responseText = handleRankingAnoGrafico(e);
+      responseText = handleYearRankingChart(e);
       break;
     case '/wrapped':
       responseText = handleWrapped(e);
       break;
     case '/rankingano':
-      responseText = handleRankingAno(e);
+      responseText = handleYearRanking(e);
       break;
     case '/ranking':
       responseText = handleRanking(e);
       break;
     case '/retroativo':
-      responseText = handleRetroativo(e);
+      responseText = handleBackdate(e);
       break;
     case '/ajuda':
-      responseText = handleAjuda();
+      responseText = handleHelp();
       break;
     case '/eu':
-      responseText = handleEu(e);
+      responseText = handleMe(e);
       break;
     case '/campeoes':
-      responseText = handleCampeoes();
+      responseText = handleChampions();
       break;
     case '/rankingolimpiada':
-      responseText = handleRankingOlimpiada(e);
+      responseText = handleOlympicsRanking(e);
       break;
     case '/hoje':
-      responseText = handleHoje();
+      responseText = handleToday();
       break;
     case '/rankingmisterioso':
-      responseText = handleRankingMisterioso();
+      responseText = handleMysteryRanking();
       break;
     case '/ticket':
       responseText = handleTicket(e);
@@ -91,16 +91,16 @@ function doPost(e) {
       responseText = handleTicketStatus(e);
       break;
     case '/meta':
-      responseText = handleMeta(e);
+      responseText = handleGoal(e);
       break;
     case '/tickets':
-      responseText = handleMeusTickets(e);
+      responseText = handleMyTickets(e);
       break;
     case 'atualizaluacheia':
-      responseText = atualizarCacheLuaCheia(e);
+      responseText = updateFullMoonCache(e);
       break;
     default:
-      responseText = `Ação não encontrada\n\n${handleAjuda()}`;
+      responseText = `Ação não encontrada\n\n${handleHelp()}`;
   }
   return ContentService
     .createTextOutput(responseText)

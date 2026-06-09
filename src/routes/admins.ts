@@ -1,16 +1,16 @@
 import express, { Request, Response } from 'express';
-import { carregarAdmins, getAdminsList } from '../services/adminService';
+import { loadAdmins, getAdminsList } from '../services/adminService';
 
 const router = express.Router();
 
-// ✅ Retorna admins em memória
+// ✅ Returns in-memory admins
 router.get('/', (req: Request, res: Response) => {
   res.json({ admins: getAdminsList() });
 });
 
-// ✅ Força atualização de admins
+// ✅ Forces an admin refresh
 router.post('/refresh', async (req: Request, res: Response) => {
-  await carregarAdmins();
+  await loadAdmins();
   res.json({ message: '✅ Admins recarregados com sucesso', admins: getAdminsList() });
 });
 
