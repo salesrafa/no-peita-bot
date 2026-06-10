@@ -225,8 +225,8 @@ function handleMysteryRanking() {
 
   // === VALID DATES (full moon + odd day): past ones count; future ones become "next"
   const fullMoonRows = fullMoonSheet.getDataRange().getValues();
-  const validDates = [];   // dd/MM/yyyy já passadas
-  const futureDates = [];   // { raw, formatada }
+  const validDates = [];   // dd/MM/yyyy already in the past
+  const futureDates = [];   // { raw, formatted }
 
   for (let i = 1; i < fullMoonRows.length; i++) {
     const dateObj = fullMoonRows[i][2];
@@ -236,29 +236,29 @@ function handleMysteryRanking() {
       ? Utilities.parseDate(dateObj, Session.getScriptTimeZone(), "dd/MM/yyyy")
       : new Date(dateObj);
 
-    if (date.getDate() % 2 !== 1) continue; // só dias ímpares
+    if (date.getDate() % 2 !== 1) continue; // odd days only
 
-    const formatada = formatDate(date);
+    const formatted = formatDate(date);
     if (date <= today) {
-      validDates.push(formatada);
+      validDates.push(formatted);
     } else {
-      futureDates.push({ raw: date, formatada });
+      futureDates.push({ raw: date, formatted });
     }
   }
 
   // === RANKING: delegate counting to generateRankingForPeriod, keeping
   // only the workouts whose dates are in the list of valid dates.
-  const datasValidasSet = new Set(validDates);
+  const validDatesSet = new Set(validDates);
   const start = new Date(2000, 0, 1);
   const end = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
 
   const ranking = generateRankingForPeriod(
     start,
     end,
-    (date) => datasValidasSet.has(formatDate(date))
+    (date) => validDatesSet.has(formatDate(date))
   );
 
-  // === MONTAR RESPOSTA
+  // === BUILD RESPONSE
   let response = "🌕 *Ranking Misterioso* (dias ímpares com Lua Cheia)\n\n";
 
   if (validDates.length > 0) {
@@ -279,7 +279,7 @@ function handleMysteryRanking() {
   // === NEXT MYSTERY DATE
   futureDates.sort((a, b) => a.raw - b.raw);
   if (futureDates.length > 0) {
-    response += `\n🔮 *Próxima data misteriosa:* ${futureDates[0].formatada}`;
+    response += `\n🔮 *Próxima data misteriosa:* ${futureDates[0].formatted}`;
   }
 
   return response.trim();
@@ -421,7 +421,7 @@ function handleRegister(e) {
   }
 
   const name = message.substring(10).trim();
-  const uuid = Utilities.getUuid(); // identidade interna estável
+  const uuid = Utilities.getUuid(); // stable internal identity
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.USERS);
   // Columns: A id_whatsapp | B name | C date | D role | E number | F uuid
   sheet.appendRow([identifier, name, timestamp, "", "", uuid]);
@@ -679,7 +679,7 @@ function setAnnualGoal(uuid, year, value) {
   for (let i = 1; i < rows.length; i++) {
     const [u, a] = rows[i];
     if (String(u).trim() === String(uuid).trim() && Number(a) === Number(year)) {
-      sheet.getRange(i + 1, 3).setValue(value); // coluna C = meta
+      sheet.getRange(i + 1, 3).setValue(value); // column C = goal
       return;
     }
   }

@@ -1,18 +1,18 @@
 name: Deploy Apps Script
 
-# Roda em paralelo ao deploy nativo do Railway.
-# Só dispara quando o código do Apps Script (ou este workflow) muda na main,
-# evitando push desnecessário quando só o app Node é alterado.
+# Runs in parallel with Railway's native deploy.
+# Only triggers when the Apps Script code (or this workflow) changes on main,
+# avoiding an unnecessary push when only the Node app changed.
 on:
   push:
     branches: [main]
     paths:
       - "apps-script/**"
       - ".github/workflows/deploy-appsscript.yml"
-  # Permite rodar manualmente pela aba Actions do GitHub
+  # Allows running it manually from the GitHub Actions tab
   workflow_dispatch:
 
-# Evita dois pushes concorrentes sobrescrevendo o Apps Script
+# Prevents two concurrent pushes from overwriting the Apps Script
 concurrency:
   group: deploy-appsscript
   cancel-in-progress: false
@@ -52,60 +52,60 @@ jobs:
       - name: Install clasp
         run: npm install -g @google/clasp@3.3.0
 
-      - name: Restaura credenciais do clasp
+      - name: Restore clasp credentials
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
         run: |
           if [ -z "$CLASPRC_JSON" ]; then
-            echo "::error::Secret CLASPRC_JSON não configurado." && exit 1
+            echo "::error::Secret CLASPRC_JSON is not configured." && exit 1
           fi
           printf '%s' "$CLASPRC_JSON" > "$HOME/.clasprc.json"
 
-      - name: Push para o Apps Script (repo é a fonte da verdade)
+      - name: Push to Apps Script (the repo is the source of truth)
         working-directory: apps-script
         run: clasp push -f
 
-      # A API do Apps Script NÃO permite deletar versões (só create/get/list);
-      # deletar só existe na UI web. O script tem limite de 200 versões e cada
-      # deploy cria uma nova. Este step não deleta nada — só conta e avisa com
-      # antecedência quando estiver perto do limite, pra dar tempo de limpar
-      # manualmente em script.google.com → Histórico do projeto → "Excluir esta
-      # versão". Nunca bloqueia o deploy.
-      - name: Alerta de limite de versões
+      # The Apps Script API does NOT allow deleting versions (only create/get/
+      # list); deleting only exists in the web UI. The script has a 200-version
+      # limit and each deploy creates a new one. This step deletes nothing — it
+      # just counts and warns ahead of time when approaching the limit, to give
+      # time to clean up manually at script.google.com → Project history →
+      # "Delete this version". Never blocks the deploy.
+      - name: Version limit alert
         run: |
           SCRIPT_ID="14t6AN-Ii2GWjL9V8lNHBKRDoiNDLcI31toQ8DwH_WSsahqTAH_DYrxUh"
-          LIMITE=200
-          ALERTA=180
-          # Lê o token do ~/.clasprc.json, que o "clasp push" anterior já
-          # renovou via refresh_token (o token do secret CLASPRC_JSON costuma
-          # estar expirado, pois access_token dura ~1h).
+          LIMIT=200
+          ALERT=180
+          # Reads the token from ~/.clasprc.json, which the previous "clasp push"
+          # already refreshed via refresh_token (the token in the CLASPRC_JSON
+          # secret is usually expired, since access_token lasts ~1h).
           TOKEN=$(python3 -c "import json,os; d=json.load(open(os.path.expanduser('~/.clasprc.json'))); t=d.get('tokens',{}); print(t.get('default',t).get('access_token',''))" 2>/dev/null || true)
           if [ -z "$TOKEN" ]; then
-            echo "::warning::Não foi possível extrair access_token do ~/.clasprc.json; pulando checagem de versões."
+            echo "::warning::Could not extract access_token from ~/.clasprc.json; skipping the version check."
             exit 0
           fi
           TOTAL=$(curl -sf -H "Authorization: Bearer $TOKEN" \
             "https://script.googleapis.com/v1/projects/${SCRIPT_ID}/versions?pageSize=200" \
             | python3 -c "import sys,json; print(len(json.load(sys.stdin).get('versions',[])))" 2>/dev/null || echo "")
           if [ -z "$TOTAL" ]; then
-            echo "::warning::Falha ao listar versões (token pode ter expirado); pulando checagem."
+            echo "::warning::Failed to list versions (token may have expired); skipping the check."
             exit 0
           fi
-          echo "Versões atuais: ${TOTAL}/${LIMITE}"
-          if [ "$TOTAL" -ge "$ALERTA" ]; then
-            echo "::warning::Apps Script com ${TOTAL}/${LIMITE} versões. A API não deleta versões — limpe manualmente em script.google.com → Histórico do projeto → 'Excluir esta versão' antes de atingir ${LIMITE}, senão o deploy vai falhar."
+          echo "Current versions: ${TOTAL}/${LIMIT}"
+          if [ "$TOTAL" -ge "$ALERT" ]; then
+            echo "::warning::Apps Script at ${TOTAL}/${LIMIT} versions. The API can't delete versions — clean up manually at script.google.com → Project history → 'Delete this version' before reaching ${LIMIT}, or the deploy will fail."
           fi
 
-      # Re-publica SEMPRE a mesma implantação (mesmo deployment ID = mesma URL).
-      # Sem isso, o clasp push só atualiza o HEAD e a URL /exec continua
-      # servindo o código antigo. Como o ID é fixo, a env URL do Railway
-      # nunca precisa mudar.
-      - name: Redeploy (mantém a mesma URL)
+      # Always re-publishes the SAME deployment (same deployment ID = same URL).
+      # Without this, clasp push only updates HEAD and the /exec URL keeps
+      # serving the old code. Since the ID is fixed, the Railway URL env never
+      # needs to change.
+      - name: Redeploy (keeps the same URL)
         working-directory: apps-script
         env:
           DEPLOYMENT_ID: ${{ vars.DEPLOYMENT_ID }}
         run: |
           if [ -z "$DEPLOYMENT_ID" ]; then
-            echo "::error::Variable DEPLOYMENT_ID não configurada (Settings → Secrets and variables → Actions → Variables)." && exit 1
+            echo "::error::Variable DEPLOYMENT_ID is not configured (Settings → Secrets and variables → Actions → Variables)." && exit 1
           fi
           clasp update-deployment -d "deploy via github actions (${GITHUB_SHA::7})" "$DEPLOYMENT_ID"

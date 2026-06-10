@@ -89,13 +89,13 @@ function updateFullMoonCache(e) {
     return `sucesso: false, erro: "Parâmetros inválidos"`;
   }
 
-  const aba = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.FULL_MOON) ||
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.FULL_MOON) ||
     SpreadsheetApp.getActiveSpreadsheet().insertSheet(SHEETS.FULL_MOON);
 
-  const firstRow = aba.getLastRow() + 1;
+  const firstRow = sheet.getLastRow() + 1;
   const rows = dates.map(date => [year, month, date]);
 
-  aba.getRange(firstRow, 1, rows.length, 3).setValues(rows);
+  sheet.getRange(firstRow, 1, rows.length, 3).setValues(rows);
 
   return `sucesso: true, addedRecords: ${rows.length}`;
 }
