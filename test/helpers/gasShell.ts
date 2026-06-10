@@ -136,10 +136,11 @@ export function loadShell(seed: Record<string, Rows> = {}) {
     .join('\n\n');
 
   const names = new Set<string>();
-  for (const m of src.matchAll(/^function\s+([A-Za-z0-9_]+)\s*\(/gm)) names.add(m[1]);
+  for (const m of src.matchAll(/^function\s+(\w+)\s*\(/gm)) names.add(m[1]);
   const epilogue = `\n;__app = { ${[...names].join(', ')} };`;
   ctx.__app = {};
   vm.createContext(ctx);
+  // eslint-disable-next-line sonarjs/code-eval -- intentional: loads the full Apps Script app in a sandboxed VM for testing
   vm.runInContext(src + epilogue, ctx, { filename: 'gas-app.js' });
 
   const app = ctx.__app;

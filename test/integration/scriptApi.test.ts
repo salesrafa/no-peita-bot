@@ -26,7 +26,7 @@ describe('handleMessage', () => {
 
   it('forwards Body/From/MsgId and replies with the Apps Script response', async () => {
     const client: any = { sendMessage: vi.fn() };
-    await handleMessage(fakeMsg(), client, '');
+    await handleMessage(fakeMsg(), client);
 
     expect(post).toHaveBeenCalledTimes(1);
     const params = post.mock.calls[0][1] as URLSearchParams;
@@ -45,7 +45,7 @@ describe('handleMessage', () => {
       hasQuotedMsg: true,
       getQuotedMessage: vi.fn().mockResolvedValue({ id: { _serialized: 'QUOTED-9' } }),
     });
-    await handleMessage(msg, client, '');
+    await handleMessage(msg, client);
 
     const params = post.mock.calls[0][1] as URLSearchParams;
     expect(params.get('QuotedMsgId')).toBe('QUOTED-9');
@@ -56,7 +56,7 @@ describe('handleMessage', () => {
     post.mockRejectedValueOnce(new Error('boom'));
     const msg = fakeMsg();
     const client: any = { sendMessage: vi.fn() };
-    await handleMessage(msg, client, '');
+    await handleMessage(msg, client);
 
     expect(msg.reply).toHaveBeenCalledWith('⚠️ Ocorreu um erro ao processar seu comando.');
     expect(errSpy).toHaveBeenCalled();

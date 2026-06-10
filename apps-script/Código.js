@@ -31,7 +31,7 @@ function doPost(e) {
     return ContentService.createTextOutput('unauthorized');
   }
 
-  let responseText = '';
+  let responseText;
   const message = (e.parameter.Body || "").trim();
   const parts = message.split(" ");
   const command = parts[0].toLowerCase(); // a primeira palavra da mensagem
