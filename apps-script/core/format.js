@@ -2,12 +2,12 @@
  * Pure functions (no I/O) — unit-testable. Functional core.
  */
 
-function formatRanking(ranking, titulo, mostrarBicho) {
+function formatRanking(ranking, title, showAnimal) {
   if (ranking.length === 0) {
     return "📊 Nenhum treino encontrado no período.";
   }
 
-  let text = `📊 *${titulo}*\n\n`;
+  let text = `📊 *${title}*\n\n`;
 
   ranking.forEach(r => {
     const medal =
@@ -16,30 +16,30 @@ function formatRanking(ranking, titulo, mostrarBicho) {
       r.rank === 3 ? "🥉 " : "";
 
     // Animal badge only on monthly rankings (the tier is a fixed monthly goal).
-    const bicho = mostrarBicho ? ` ${classifyAnimal(r.total).current.emoji}` : "";
+    const animal = showAnimal ? ` ${classifyAnimal(r.total).current.emoji}` : "";
 
-    text += `${r.rank} - ${medal}*${r.name}* - ${r.total} treino(s) - 🔥 ${r.streak}${bicho}\n`;
+    text += `${r.rank} - ${medal}*${r.name}* - ${r.total} treino(s) - 🔥 ${r.streak}${animal}\n`;
   });
 
   let result = text.trim();
 
   // Animal hint only when badges are shown (monthly rankings).
   // Deliberately neutral emoji — doesn't reveal the secret top animal.
-  if (mostrarBicho) {
+  if (showAnimal) {
     result += `\n\n🐾 Use /eu para entender seu bicho do mês.`;
   }
 
   return result;
 }
 
-function formatWrappedChampions(lista) {
-  if (!lista || lista.length === 0) {
+function formatWrappedChampions(list) {
+  if (!list || list.length === 0) {
     return "📅 *Campeões do ano*\n\nNenhum campeão registrado.";
   }
 
   let text = `📅 *Campeões do ano*\n\n`;
 
-  lista.forEach(item => {
+  list.forEach(item => {
     text += `🗓️ *${item.monthName}*\n`;
 
     if (item.gold.length > 0) {
@@ -76,14 +76,14 @@ function formatWrappedOlympics(ranking) {
   return text.trim();
 }
 
-// Barra de progresso textual de 10 blocos (🟩 cheio, ⬜ vazio).
+// Text progress bar of 10 blocks (🟩 filled, ⬜ empty).
 function progressBar(value, total) {
-  const blocos = 10;
+  const blocks = 10;
   const frac = total > 0 ? value / total : 0;
-  let cheios = Math.round(frac * blocos);
-  if (cheios < 0) cheios = 0;
-  if (cheios > blocos) cheios = blocos;
-  return "🟩".repeat(cheios) + "⬜".repeat(blocos - cheios);
+  let filled = Math.round(frac * blocks);
+  if (filled < 0) filled = 0;
+  if (filled > blocks) filled = blocks;
+  return "🟩".repeat(filled) + "⬜".repeat(blocks - filled);
 }
 
 // Emoji for a ticket status. The 3 possible statuses are: pendente,
@@ -92,5 +92,5 @@ function ticketStatusEmoji(status) {
   const s = String(status || "").toLowerCase().trim();
   if (s === "finalizado") return "✅";
   if (s === "ignorado") return "🚫";
-  return "⏳"; // pendente (padrão)
+  return "⏳"; // pendente (default)
 }
