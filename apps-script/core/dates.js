@@ -33,11 +33,11 @@ function daysBetween(d1, d2) {
 }
 
 function getMonthNamePtBr(monthNumber) {
-  const nomes = [
+  const names = [
     "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
     "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
   ];
-  return nomes[monthNumber];
+  return names[monthNumber];
 }
 
 function getPeriodFromMessage(body, now = new Date()) {

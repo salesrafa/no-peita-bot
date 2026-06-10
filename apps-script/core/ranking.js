@@ -2,8 +2,8 @@
  * Pure functions (no I/O) — unit-testable. Functional core.
  */
 
-function computeRankingMetricsWithAB(porPessoa) {
-  const rows = Object.entries(porPessoa).map(([uuid, info]) => {
+function computeRankingMetricsWithAB(byPerson) {
+  const rows = Object.entries(byPerson).map(([uuid, info]) => {
     const name = info.name;
     const dates = info.dates;
 
@@ -14,21 +14,21 @@ function computeRankingMetricsWithAB(porPessoa) {
     ).map(s => new Date(s)).sort((a, b) => a - b);
 
     // streak only from daily rows
-    let maiorSeq = 0, atualSeq = 0, anterior = null;
+    let maxStreak = 0, curStreak = 0, prev = null;
     for (const d of uniqueDays) {
-      if (anterior && daysBetween(anterior, d) === 1) {
-        atualSeq += 1;
+      if (prev && daysBetween(prev, d) === 1) {
+        curStreak += 1;
       } else {
-        atualSeq = 1;
+        curStreak = 1;
       }
-      maiorSeq = Math.max(maiorSeq, atualSeq);
-      anterior = d;
+      maxStreak = Math.max(maxStreak, curStreak);
+      prev = d;
     }
 
     return {
       name,
       total: uniqueDays.length + info.totalAB,
-      streak: maiorSeq
+      streak: maxStreak
     };
   });
 
@@ -75,18 +75,18 @@ function computeTotalAndStreak(dates) {
     ))
   ).map(s => new Date(s)).sort((a, b) => a - b);
 
-  let maiorSeq = 0, atualSeq = 0, anterior = null;
+  let maxStreak = 0, curStreak = 0, prev = null;
   for (const d of uniqueDays) {
-    if (anterior && daysBetween(anterior, d) === 1) {
-      atualSeq += 1;
+    if (prev && daysBetween(prev, d) === 1) {
+      curStreak += 1;
     } else {
-      atualSeq = 1;
+      curStreak = 1;
     }
-    maiorSeq = Math.max(maiorSeq, atualSeq);
-    anterior = d;
+    maxStreak = Math.max(maxStreak, curStreak);
+    prev = d;
   }
 
-  return { total: uniqueDays.length, streak: maiorSeq };
+  return { total: uniqueDays.length, streak: maxStreak };
 }
 
 function sortOlympicRanking(medals) {
