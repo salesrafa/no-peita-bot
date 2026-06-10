@@ -148,15 +148,6 @@ function handleTicket(e) {
   return `✅ Ticket #${newId} criado com sucesso!\nMensagem: "${message}"\nStatus: pendente`;
 }
 
-// Emoji for a ticket status. The 3 possible statuses are: pendente,
-// finalizado and ignorado.
-function ticketStatusEmoji(status) {
-  const s = String(status || "").toLowerCase().trim();
-  if (s === "finalizado") return "✅";
-  if (s === "ignorado") return "🚫";
-  return "⏳"; // pendente (padrão)
-}
-
 // Lists ALL of the user's own tickets (any status: pendente, finalizado,
 // ignorado). Each one shows its current status.
 function handleMyTickets(e) {
@@ -292,30 +283,6 @@ function handleMysteryRanking() {
   }
 
   return response.trim();
-}
-
-// Given an array of workout dates, returns the total of unique trained days
-// and the longest streak of consecutive days. Same tiebreak logic used in
-// computeRankingMetricsWithAB (total and, on a tie, streak).
-function computeTotalAndStreak(dates) {
-  const uniqueDays = Array.from(
-    new Set(dates.map(d =>
-      new Date(d.getFullYear(), d.getMonth(), d.getDate()).toDateString()
-    ))
-  ).map(s => new Date(s)).sort((a, b) => a - b);
-
-  let maiorSeq = 0, atualSeq = 0, anterior = null;
-  for (const d of uniqueDays) {
-    if (anterior && daysBetween(anterior, d) === 1) {
-      atualSeq += 1;
-    } else {
-      atualSeq = 1;
-    }
-    maiorSeq = Math.max(maiorSeq, atualSeq);
-    anterior = d;
-  }
-
-  return { total: uniqueDays.length, streak: maiorSeq };
 }
 
 function handleChampions() {
@@ -667,16 +634,6 @@ function countWorkoutsInYear(uuidUsuario, year) {
     days[`${t.date.getMonth()}-${t.date.getDate()}`] = true;
   });
   return Object.keys(days).length;
-}
-
-// Barra de progresso textual de 10 blocos (🟩 cheio, ⬜ vazio).
-function progressBar(value, total) {
-  const blocos = 10;
-  const frac = total > 0 ? value / total : 0;
-  let cheios = Math.round(frac * blocos);
-  if (cheios < 0) cheios = 0;
-  if (cheios > blocos) cheios = blocos;
-  return "🟩".repeat(cheios) + "⬜".repeat(blocos - cheios);
 }
 
 // "metas" sheet: one row per (uuid, year). Keeps the history of annual goals
