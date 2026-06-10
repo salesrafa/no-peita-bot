@@ -10,6 +10,7 @@ describe('adminService', () => {
   beforeEach(() => get.mockReset());
 
   it('loads admins from getAdmins (reading the `number` field)', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
     get.mockResolvedValue({ data: [{ number: '111', name: 'A' }, { number: '222', name: 'B' }] });
     await loadAdmins();
 
@@ -20,7 +21,12 @@ describe('adminService', () => {
   });
 
   it('does not throw on failure (keeps the bot running)', async () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     get.mockRejectedValueOnce(new Error('network down'));
+
     await expect(loadAdmins()).resolves.toBeUndefined();
+    expect(errSpy).toHaveBeenCalled(); // the failure is logged, not thrown
+
+    errSpy.mockRestore();
   });
 });

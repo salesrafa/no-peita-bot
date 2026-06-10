@@ -52,10 +52,15 @@ describe('handleMessage', () => {
   });
 
   it('replies with an error message when the call throws', async () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     post.mockRejectedValueOnce(new Error('boom'));
     const msg = fakeMsg();
     const client: any = { sendMessage: vi.fn() };
     await handleMessage(msg, client, '');
+
     expect(msg.reply).toHaveBeenCalledWith('⚠️ Ocorreu um erro ao processar seu comando.');
+    expect(errSpy).toHaveBeenCalled();
+
+    errSpy.mockRestore();
   });
 });
