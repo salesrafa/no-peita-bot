@@ -1,45 +1,64 @@
-name: Deploy Apps Script
+name: CI
 
-# Runs in parallel with Railway's native deploy.
-# Only triggers when the Apps Script code (or this workflow) changes on main,
-# avoiding an unnecessary push when only the Node app changed.
 on:
+  pull_request:
   push:
     branches: [main]
-    paths:
-      - "apps-script/**"
-      - ".github/workflows/deploy-appsscript.yml"
-  # Allows running it manually from the GitHub Actions tab
+  # Allows running the deploy manually from the GitHub Actions tab
   workflow_dispatch:
 
-# Prevents two concurrent pushes from overwriting the Apps Script
-concurrency:
-  group: deploy-appsscript
-  cancel-in-progress: false
-
 jobs:
-  # Gate: the deploy only runs if the test suite passes.
+  # Runs on every PR and push. Also detects whether apps-script/ changed, so the
+  # deploy job below knows whether to run.
   test:
     runs-on: ubuntu-latest
+    outputs:
+      apps_script: ${{ steps.filter.outputs.apps_script }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect apps-script changes (for the deploy gate)
+        id: filter
+        run: |
+          before="${{ github.event.before }}"
+          if [ -z "$before" ] || [ "$before" = "0000000000000000000000000000000000000000" ]; then
+            before="$(git rev-parse HEAD^ 2>/dev/null || echo HEAD)"
+          fi
+          if git diff --name-only "$before" HEAD | grep -q '^apps-script/'; then
+            echo "apps_script=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "apps_script=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+
       # package-lock.json is gitignored, so we use `npm install`; the tests
       # never launch a browser, so skip the Chromium download.
       - name: Install dependencies
         run: npm install
         env:
           PUPPETEER_SKIP_DOWNLOAD: "true"
+
       - name: Run tests
         run: npm test
 
-  deploy:
+  # Deploys Apps Script only on a push to main (or manual run) that touched
+  # apps-script/, and only after the tests pass. Runs in parallel with Railway's
+  # native deploy of the Node app.
+  deploy-appsscript:
     needs: test
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && needs.test.outputs.apps_script == 'true') }}
     runs-on: ubuntu-latest
+    # Prevents two concurrent pushes from overwriting the Apps Script
+    concurrency:
+      group: deploy-appsscript
+      cancel-in-progress: false
     steps:
       - name: Checkout
         uses: actions/checkout@v4
