@@ -1,76 +1,84 @@
-# 🤖 Bot de Treino no WhatsApp
+# 🤖 WhatsApp Workout Bot
 
-Um bot de WhatsApp que registra treinos, calcula rankings mensais, mostra estatísticas curiosas (como treinos em lua cheia 🌕 e dias ímpares 🗓️) e interage diretamente com uma planilha do Google Sheets.
-
----
-
-## 🚀 Tecnologias
-
-- [whatsapp-web.js](https://github.com/pedroslopez/whatsapp-web.js) — integração com WhatsApp Web
-- TypeScript — linguagem principal da aplicação
-- Express.js — servidor web leve
-- Google Apps Script — backend para persistência de dados
-- Google Sheets — armazenamento dos dados
-- Railway — deploy e hospedagem
-- Nodemon + ts-node — hot reload no desenvolvimento
-- lunarphase-js — para detectar fases da lua 🌕
+A WhatsApp bot that logs workouts, computes monthly rankings, shows fun stats (like full-moon 🌕 and odd-day 🗓️ workouts) and talks directly to a Google Sheets spreadsheet.
 
 ---
 
-## 📁 Estrutura do Projeto
+## 🚀 Tech
+
+- [whatsapp-web.js](https://github.com/pedroslopez/whatsapp-web.js) — WhatsApp Web integration
+- TypeScript — the app's main language
+- Express.js — lightweight web server
+- Google Apps Script — backend for data persistence
+- Google Sheets — data storage
+- Railway — deploy and hosting
+- Nodemon + ts-node — hot reload in development
+- lunarphase-js — to detect moon phases 🌕
+
+---
+
+## 📁 Project structure
 
 ```
 .
-├── src/
+├── src/                    # Node/TypeScript bot
 │   ├── index.ts            # Entry point
-│   ├── config/             # Configuração e variáveis de ambiente
-│   ├── routes/             # Rotas (ex: /qr para escanear o código)
-│   └── services/           # Lógica principal (whatsapp, API, cache)
-├── dist/                   # Arquivos compilados (gerado pelo TypeScript)
-├── .env.example            # Arquivo exemplo de variáveis de ambiente
-├── nodemon.json            # Configuração de hot reload
-├── Dockerfile              # Arquivo de configuração Docker
-├── tsconfig.json           # Configuração do TypeScript
+│   ├── config/             # Config and environment variables
+│   ├── core/               # Pure logic (unit-tested)
+│   ├── routes/             # Routes (e.g. /qr to scan the code)
+│   └── services/           # Main logic (whatsapp, API, admins)
+├── apps-script/            # Google Apps Script backend
+│   ├── core/               # Pure logic (unit-tested)
+│   └── *.js                # Handlers, sheet access, router
+├── test/                   # Vitest unit + integration tests
+├── .env.example            # Example environment file
+├── tsconfig.json           # TypeScript config
 └── package.json
 ```
 
 ---
 
-## 🛠️ Instalação e Execução
+## 🛠️ Setup and run
 
-### 1. Clone o projeto
+### 1. Clone the project
 
 ```bash
 git clone https://github.com/salesrafa/no-peita-bot.git
-cd seu-repo
+cd no-peita-bot
 ```
 
-### 2. Instale as dependências
+### 2. Install dependencies
 
 ```bash
 npm install
 ```
 
-### 3. Copie o arquivo  `.env.example` e preencha as variáveis
+### 3. Copy `.env.example` and fill in the variables
 
 ```bash
 cp .env.example .env
 ```
-Obs: `ENVIRONMENT=prod` ativa o modo de QR remoto (/qr)
+Note: `ENVIRONMENT=prod` enables the remote QR mode (`/qr`).
 
-### 4. Execute localmente com reload automático
+### 4. Run locally with auto-reload
 
 ```bash
 npm run dev
 ```
 
-### 5. Compile para produção
+### 5. Run the tests
+
+```bash
+npm test
+```
+
+### 6. Build for production
 
 ```bash
 npm run build
 ```
 
-### 6. Rode em produção (ou Railway)
+### 7. Run in production (or Railway)
 
 ```bash
 npm start
@@ -78,42 +86,47 @@ npm start
 
 ---
 
-## 🧪 Principais Comandos do Bot
+## 🧪 Main bot commands
 
-- **`/cadastro Seu Nome`** — cadastra seu número para poder utilizar os outros comandos.  
-- **`/pontuar`** — registra um treino para o dia atual (apenas 1 por dia).  
-- **`/retroativo DD/MM/AAAA`** — registra um treino em uma data passada (sem duplicar dias).  
-- **`/hoje`** — lista quem já registrou treino hoje.  
-- **`/ranking`** — mostra o ranking de treinos do mês atual (com critérios de desempate).  
-- **`/ranking MM/AAAA`** — mostra o ranking de treinos de um mês específico.  
-- **`/rankingano`** (ou **`/rankingano AAAA`**) — mostra o ranking acumulado do ano atual (ou de um ano específico).  
-- **`/anografico`** (ou **`/anografico AAAA`**) — gera um gráfico com o top 10 atletas do ano.  
-- **`/wrapped`** (ou **`/wrapped AAAA`**) — resumo do ano: campeões por mês e quadro de medalhas (estilo "retrospectiva").  
-- **`/eu`** — lista os treinos que você registrou no mês atual.  
-- **`/campeoes`** — mostra o ranking de campeões com total de títulos conquistados (🏆).  
-- **`/rankingolimpiada`** (ou **`/rankingolimpiada AAAA`**) — quadro de medalhas (🥇🥈🥉) do ano, considerando apenas os meses já finalizados.  
-- **`/rankingmisterioso`** — mostra o ranking considerando apenas treinos feitos em *dias ímpares com Lua Cheia* 🌕.  
-- **`/ticket sua mensagem`** — abre um ticket com uma sugestão, dúvida ou solicitação. Ele será criado automaticamente com status *pendente*.  
-- **`/ticketstatus ID`** — consulta o status de um ticket existente pelo número do ID.  
-- **`/ajuda`** — exibe a lista completa de comandos disponíveis.
+> Commands and their arguments are typed in Portuguese (that's the bot's user interface).
 
----
-
-## 🌍 Deploy na Railway
-
-> A Railway detecta o comando `npm start` ou um `Dockerfile`.
-
-1. Faça login em [https://railway.app](https://railway.app)
-2. Crie um novo projeto e conecte o GitHub (se aplicável)
-3. Configure as variáveis de ambiente (`.env`)
-4. Acesse o QR Code via `/qr` para escanear o WhatsApp (modo `prod`)
+- **`/cadastro Seu Nome`** — registers your number so you can use the other commands.
+- **`/pontuar`** — logs a workout for the current day (only 1 per day).
+- **`/retroativo DD/MM/AAAA`** — logs a workout on a past date (no duplicate days).
+- **`/hoje`** — lists who already logged a workout today.
+- **`/ranking`** — monthly workout ranking (with tiebreakers).
+- **`/ranking MM/AAAA`** — ranking for a specific month.
+- **`/rankingano`** (or **`/rankingano AAAA`**) — cumulative ranking for the current (or a specific) year.
+- **`/anografico`** (or **`/anografico AAAA`**) — a chart with the top 10 athletes of the year.
+- **`/wrapped`** (or **`/wrapped AAAA`**) — year in review: champions per month and the medals board.
+- **`/eu`** — your workouts in the current month, plus your "animal of the month" badge.
+- **`/meta`** (or **`/meta NÚMERO`**) — shows your annual goal progress, or sets it.
+- **`/campeoes`** — champions ranking with total titles won (🏆).
+- **`/rankingolimpiada`** (or **`/rankingolimpiada AAAA`**) — medals board (🥇🥈🥉) for the year, only finished months.
+- **`/rankingmisterioso`** — ranking counting only workouts on *odd days with a Full Moon* 🌕.
+- **`/ticket sua mensagem`** — opens a ticket (suggestion, question or request), created with status *pendente*.
+- **`/tickets`** — lists all of your tickets and their status.
+- **`/ticketstatus ID`** — checks the status of a ticket by its ID.
+- **`/apagar`** — (admins only) deletes a workout; reply to the `/pontuar` message and send `/apagar`.
+- **`/ajuda`** — shows the full list of available commands.
 
 ---
 
-## 📄 Licença
+## 🌍 Deploy on Railway
 
-Este projeto é open-source e distribuído sob a [MIT License](LICENSE).
+> Railway detects the `npm start` command or a `Dockerfile`.
+
+1. Sign in at [https://railway.app](https://railway.app)
+2. Create a new project and connect GitHub (if applicable)
+3. Configure the environment variables (`.env`)
+4. Open the QR Code via `/qr` to link WhatsApp (`prod` mode)
 
 ---
 
-## 🧙 Feito com carinho e curiosidade astronômica ✨
+## 📄 License
+
+This project is open-source under the [MIT License](LICENSE).
+
+---
+
+## 🧙 Made with care and astronomical curiosity ✨

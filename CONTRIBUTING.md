@@ -1,102 +1,108 @@
-# 🤝 Contribuindo com o no-peita-bot
+# 🤝 Contributing to no-peita-bot
 
-Valeu por querer ajudar! 💪 Esse guia explica como o projeto funciona e como mandar suas mudanças.
-
----
-
-## 🧭 Visão geral
-
-O projeto tem **duas partes** que vivem nesse mesmo repositório:
-
-| Parte | Pasta | O que é |
-|------|-------|---------|
-| **Bot (Node/TypeScript)** | `src/` | Conecta no WhatsApp Web e encaminha os comandos. Roda no Railway. |
-| **Backend (Google Apps Script)** | `apps-script/` | Onde a lógica de verdade acontece (rankings, cadastro, planilha). Publicado automaticamente. |
-
-> ⚠️ O `apps-script/` é a **fonte da verdade** do backend. Edite os arquivos aqui no repo — **não** edite pelo editor web do Apps Script, porque o deploy automático sobrescreve.
+Thanks for wanting to help! 💪 This guide explains how the project works and how to send your changes.
 
 ---
 
-## 🔄 Fluxo de contribuição
+## 🧭 Overview
 
-A branch `main` é **protegida**. Ninguém faz push direto nela (exceto o mantenedor). Toda mudança entra por **Pull Request**:
+The project has **two parts** living in the same repository:
 
-1. **Fork** o repositório (ou crie uma branch, se você for colaborador).
-2. Crie uma branch a partir da `main`:
+| Part | Folder | What it is |
+|------|--------|------------|
+| **Bot (Node/TypeScript)** | `src/` | Connects to WhatsApp Web and forwards the commands. Runs on Railway. |
+| **Backend (Google Apps Script)** | `apps-script/` | Where the real logic lives (rankings, registration, the spreadsheet). Published automatically. |
+
+> ⚠️ `apps-script/` is the backend's **source of truth**. Edit the files here in the repo — do **not** edit them in the Apps Script web editor, because the automatic deploy overwrites them.
+
+---
+
+## 🔄 Contribution flow
+
+The `main` branch is **protected**. Nobody pushes to it directly (except the maintainer). Every change goes through a **Pull Request**:
+
+1. **Fork** the repository (or create a branch, if you're a collaborator).
+2. Create a branch off `main`:
    ```bash
-   git checkout -b minha-feature
+   git checkout -b my-feature
    ```
-3. Faça suas mudanças e commits.
-4. Abra um **Pull Request** para a `main`.
-5. O PR só pode ser mergeado após **aprovação do mantenedor** ([@salesrafa](https://github.com/salesrafa)) — é o que o `CODEOWNERS` exige.
+3. Make your changes and commits.
+4. Open a **Pull Request** against `main`.
+5. The PR can only be merged after **maintainer approval** ([@salesrafa](https://github.com/salesrafa)) — that's what `CODEOWNERS` enforces.
 
-Quando o PR é mergeado, o deploy acontece **sozinho**:
-- mudou `src/**` → o **Railway** redeploya o bot;
-- mudou `apps-script/**` → um **GitHub Action** publica no Apps Script.
+On every PR, the **tests run automatically** (GitHub Actions). When the PR is merged, the deploy happens **on its own**:
+- `src/**` changed → **Railway** redeploys the bot;
+- `apps-script/**` changed → a **GitHub Action** publishes to Apps Script.
 
-Você, como contribuidor, **não precisa fazer deploy** — só abrir o PR. 🎉
+Both deploys are gated on the test suite. As a contributor you **don't need to deploy** — just open the PR. 🎉
 
 ---
 
-## 🛠️ Rodando localmente
+## 🛠️ Running locally
 
-### 1. Instale as dependências
+### 1. Install dependencies
 ```bash
 npm install
 ```
 
-### 2. Configure o `.env`
+### 2. Configure `.env`
 ```bash
 cp .env.example .env
 ```
-Preencha:
+Fill in:
 
-| Variável | Descrição |
-|----------|-----------|
-| `URL` | URL `/exec` do Web App do Apps Script (o backend). |
-| `ENVIRONMENT` | `dev` (responde só aos contatos de `ALLOWED_CONTACTS`) ou `prod` (responde a todos + ativa `/qr`). |
-| `SCRIPT_AUTH_TOKEN` | Token compartilhado com o backend. **Obrigatório** — sem ele o Apps Script rejeita as chamadas. |
-| `ALLOWED_CONTACTS` | Contatos/grupos permitidos no modo `dev`, separados por vírgula (ex: `5511...@c.us,1203...@g.us`). |
+| Variable | Description |
+|----------|-------------|
+| `URL` | The Apps Script Web App `/exec` URL (the backend). |
+| `ENVIRONMENT` | `dev` (only replies to `ALLOWED_CONTACTS`) or `prod` (replies to everyone + enables `/qr`). |
+| `SCRIPT_AUTH_TOKEN` | Token shared with the backend. **Required** — without it the Apps Script rejects the calls. |
+| `ALLOWED_CONTACTS` | Contacts/groups allowed in `dev` mode, comma-separated (e.g. `5511...@c.us,1203...@g.us`). |
 
-> 🔐 `URL` e `SCRIPT_AUTH_TOKEN` apontam pro backend de produção e **não ficam no repo**. Para rodar o fluxo completo de ponta a ponta, peça esses valores ao mantenedor **ou** crie sua própria cópia do Apps Script (clonável via [clasp](https://github.com/google/clasp) a partir de `apps-script/`) e use a URL/token dela.
+> 🔐 `URL` and `SCRIPT_AUTH_TOKEN` point to the production backend and are **not** in the repo. To run the full end-to-end flow, ask the maintainer for these values **or** create your own copy of the Apps Script (clonable via [clasp](https://github.com/google/clasp) from `apps-script/`) and use its URL/token.
 
-### 3. Rode com reload automático
+### 3. Run with auto-reload
 ```bash
 npm run dev
 ```
 
-### 4. Compile (checagem de tipos)
+### 4. Run the tests
+```bash
+npm test
+```
+
+### 5. Build (type check)
 ```bash
 npm run build
 ```
 
 ---
 
-## ✍️ Backend (Apps Script) com clasp
+## ✍️ Backend (Apps Script) with clasp
 
-Se for mexer em `apps-script/`:
+If you're touching `apps-script/`:
 
 ```bash
-npm install -g @google/clasp   # ou use via npx
-clasp login                     # autentica na sua conta Google
+npm install -g @google/clasp   # or use it via npx
+clasp login                     # authenticate with your Google account
 cd apps-script
-# edite os .js, faça commit e abra o PR
+# edit the .js files, commit and open the PR
 ```
 
-Não rode `clasp deploy` / "Nova implantação" no editor — o deploy é feito pelo CI re-publicando **sempre a mesma implantação** (pra URL não mudar).
+Don't run `clasp deploy` / "New deployment" in the editor — the deploy is done by CI re-publishing **the same deployment every time** (so the URL doesn't change).
 
 ---
 
-## ✅ Boas práticas
+## ✅ Conventions
 
-- **Um PR por assunto** — facilita a revisão.
-- Mensagens de commit claras e no presente (ex: `feat: adiciona comando /streak`).
-- Rode `npm run build` antes de abrir o PR (sem erros de tipo).
-- **Nunca** commite segredos (`.env`, tokens, números de telefone reais). O `.env` já está no `.gitignore`.
-- Atualize o `/ajuda` (em `apps-script/Código.js`) se adicionar/alterar comandos.
+- **The code, comments, commits and PRs are in English.** The user-facing strings (bot replies, `/ajuda` text), commands and spreadsheet tab names stay in pt-BR.
+- **One PR per topic** — easier to review.
+- Clear commit messages in the imperative (e.g. `feat: add /streak command`).
+- Run `npm test` and `npm run build` before opening the PR (tests green, no type errors).
+- **Never** commit secrets (`.env`, tokens, real phone numbers). `.env` is already in `.gitignore`.
+- Update `/ajuda` (in `apps-script/handlers.js`) if you add/change commands.
 
 ---
 
-## 🐛 Encontrou um bug ou tem uma ideia?
+## 🐛 Found a bug or have an idea?
 
-Abra uma [issue](https://github.com/salesrafa/no-peita-bot/issues) descrevendo o caso. Dentro do próprio bot também dá pra usar `/ticket sua mensagem`. 🙌
+Open an [issue](https://github.com/salesrafa/no-peita-bot/issues) describing it. Inside the bot you can also use `/ticket sua mensagem`. 🙌
