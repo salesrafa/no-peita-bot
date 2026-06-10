@@ -2,6 +2,7 @@ import { Client, Message } from 'whatsapp-web.js';
 import { environment, allowedContacts } from '../config';
 import { handleMessage } from './scriptApi';
 import { loadAdmins, isAdmin } from './adminService';
+import { shouldHandleMessage } from '../core/messageGate';
 
 let lastQr = "";
 
@@ -42,12 +43,7 @@ export function initClient(): void {
   client.on('auth_failure', msg => console.error('🔴 AUTH FAILURE:', msg));
 
   client.on('message', async (msg: Message) => {
-    const from = msg.from;
-    const isAllowed = allowedContacts.includes(from);
-    const isCommand = msg.body.startsWith('/');
-
-    if (!isCommand) return;
-    if (environment !== 'prod' && !isAllowed) return;
+    if (!shouldHandleMessage(msg.body, msg.from, environment, allowedContacts)) return;
 
     try {
       await handleMessage(msg, client, lastQr);
