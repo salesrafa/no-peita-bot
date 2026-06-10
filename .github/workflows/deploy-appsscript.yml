@@ -18,7 +18,27 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Gate: the deploy only runs if the test suite passes.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      # package-lock.json is gitignored, so we use `npm install`; the tests
+      # never launch a browser, so skip the Chromium download.
+      - name: Install dependencies
+        run: npm install
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: "true"
+      - name: Run tests
+        run: npm test
+
   deploy:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
