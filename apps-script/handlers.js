@@ -103,7 +103,7 @@ function handleTicketStatus(e) {
 
   const rows = sheet.getDataRange().getValues();
   for (let i = 1; i < rows.length; i++) {
-    const [_, rowName, id, msg, status] = rows[i];
+    const [, rowName, id, msg, status] = rows[i];
     if (id === searchedId) {
       return `🎫 *Ticket #${id}*\n👤 Aberto por: ${rowName}\n📝 Mensagem: ${msg}\n📌 Status: *${status}*`;
     }
@@ -226,7 +226,7 @@ function handleMysteryRanking() {
   // === VALID DATES (full moon + odd day): past ones count; future ones become "next"
   const fullMoonRows = fullMoonSheet.getDataRange().getValues();
   const validDates = [];   // dd/MM/yyyy already in the past
-  const futureDates = [];   // { raw, formatted }
+  const futureDates = [];   // future valid dates (raw date + formatted string)
 
   for (let i = 1; i < fullMoonRows.length; i++) {
     const dateObj = fullMoonRows[i][2];
@@ -555,7 +555,6 @@ const DEFAULT_ANNUAL_GOAL = 150;
 // /meta        -> shows annual goal progress (with bar and projection)
 // /meta 200    -> sets the personal annual goal for the current year ("metas" sheet)
 function handleGoal(e) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
   const user = getUserByIdentifier(e.parameter.From || "");
   if (!user) {
     return MSG_NOT_REGISTERED;

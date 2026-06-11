@@ -15,8 +15,8 @@ const CORE_FILES = ['animals', 'identity', 'dates', 'ranking', 'format'];
 
 function collectNames(src: string): string[] {
   const names = new Set<string>();
-  for (const m of src.matchAll(/^function\s+([A-Za-z0-9_]+)\s*\(/gm)) names.add(m[1]);
-  for (const m of src.matchAll(/^const\s+([A-Za-z0-9_]+)\s*=/gm)) names.add(m[1]);
+  for (const m of src.matchAll(/^function\s+(\w+)\s*\(/gm)) names.add(m[1]);
+  for (const m of src.matchAll(/^const\s+(\w+)\s*=/gm)) names.add(m[1]);
   return [...names];
 }
 
@@ -29,6 +29,7 @@ export function loadGasCore(): Record<string, any> {
   const epilogue = `\n;__coreExports = { ${collectNames(src).join(', ')} };`;
   const context: Record<string, any> = { __coreExports: {} };
   vm.createContext(context);
+  // eslint-disable-next-line sonarjs/code-eval -- intentional: loads the Apps Script core in a sandboxed VM for testing
   vm.runInContext(src + epilogue, context, { filename: 'gas-core.js' });
   return context.__coreExports;
 }

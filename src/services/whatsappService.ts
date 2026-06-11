@@ -1,7 +1,7 @@
 import { Client, Message } from 'whatsapp-web.js';
 import { environment, allowedContacts } from '../config';
 import { handleMessage } from './scriptApi';
-import { loadAdmins, isAdmin } from './adminService';
+import { loadAdmins } from './adminService';
 import { shouldHandleMessage } from '../core/messageGate';
 
 let lastQr = "";
@@ -46,7 +46,7 @@ export function initClient(): void {
     if (!shouldHandleMessage(msg.body, msg.from, environment, allowedContacts)) return;
 
     try {
-      await handleMessage(msg, client, lastQr);
+      await handleMessage(msg, client);
     } catch (err) {
       console.error('Error processing message:', err);
       await msg.reply('⚠️ Ocorreu um erro ao processar seu comando.');

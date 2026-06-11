@@ -2,6 +2,8 @@
  * Pure functions (no I/O) — unit-testable. Functional core.
  */
 
+const RANK_MEDAL = { 1: "🥇 ", 2: "🥈 ", 3: "🥉 " };
+
 function formatRanking(ranking, title, showAnimal) {
   if (ranking.length === 0) {
     return "📊 Nenhum treino encontrado no período.";
@@ -10,10 +12,7 @@ function formatRanking(ranking, title, showAnimal) {
   let text = `📊 *${title}*\n\n`;
 
   ranking.forEach(r => {
-    const medal =
-      r.rank === 1 ? "🥇 " :
-      r.rank === 2 ? "🥈 " :
-      r.rank === 3 ? "🥉 " : "";
+    const medal = RANK_MEDAL[r.rank] || "";
 
     // Animal badge only on monthly rankings (the tier is a fixed monthly goal).
     const animal = showAnimal ? ` ${classifyAnimal(r.total).current.emoji}` : "";

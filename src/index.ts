@@ -5,6 +5,7 @@ import qrRoutes from './routes/qr';
 import adminsRoutes from './routes/admins'; // ✅ novo import
 
 const app = express();
+app.disable('x-powered-by');
 
 app.get('/', (_, res) => res.send('🤖 Bot do WhatsApp ativo'));
 
