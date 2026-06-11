@@ -1,4 +1,4 @@
-import { Client, Message } from 'whatsapp-web.js';
+import { Client, LocalAuth, Message } from 'whatsapp-web.js';
 import { environment, allowedContacts } from '../config';
 import { handleMessage } from './scriptApi';
 import { loadAdmins } from './adminService';
@@ -7,6 +7,10 @@ import { shouldHandleMessage } from '../core/messageGate';
 let lastQr = "";
 
 const client = new Client({
+  // Persists the WhatsApp session so restarts/deploys don't require a new QR
+  // scan. WWEBJS_DATA_PATH should point to durable storage (a Railway Volume
+  // in production); when unset, LocalAuth falls back to ./.wwebjs_auth.
+  authStrategy: new LocalAuth({ dataPath: process.env.WWEBJS_DATA_PATH }),
   puppeteer: {
     executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
     headless: true,
