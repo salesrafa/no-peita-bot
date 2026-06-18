@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { Client, LocalAuth, Message } from 'whatsapp-web.js';
 import { environment, allowedContacts } from '../config';
 import { handleMessage } from './scriptApi';
@@ -6,11 +8,39 @@ import { shouldHandleMessage } from '../core/messageGate';
 
 let lastQr = "";
 
+// Persists the WhatsApp session so restarts/deploys don't require a new QR
+// scan. WWEBJS_DATA_PATH should point to durable storage (a Railway Volume
+// in production); when unset, LocalAuth falls back to ./.wwebjs_auth.
+const dataPath = process.env.WWEBJS_DATA_PATH || '.wwebjs_auth';
+
+/**
+ * Removes stale Chromium singleton lock files from the persisted session dirs.
+ *
+ * Chromium writes SingletonLock/Socket/Cookie into its user-data dir. On
+ * Railway the container is killed without a graceful Chromium shutdown, so
+ * those files survive in the volume; the next container then sees the lock
+ * pointing to a previous host/PID and refuses to launch ("profile appears to
+ * be in use by another Chromium process"). Deploys never overlap (the volume
+ * forces a single instance), so any lock found at boot is stale and safe to
+ * delete.
+ */
+function clearChromiumSingletonLocks(): void {
+  const lockFiles = ['SingletonLock', 'SingletonSocket', 'SingletonCookie'];
+  let sessionDirs: string[];
+  try {
+    sessionDirs = fs.readdirSync(dataPath).filter((name) => name.startsWith('session'));
+  } catch {
+    return; // volume empty or not mounted yet — nothing to clean
+  }
+  for (const dir of sessionDirs) {
+    for (const lock of lockFiles) {
+      fs.rmSync(path.join(dataPath, dir, lock), { force: true });
+    }
+  }
+}
+
 const client = new Client({
-  // Persists the WhatsApp session so restarts/deploys don't require a new QR
-  // scan. WWEBJS_DATA_PATH should point to durable storage (a Railway Volume
-  // in production); when unset, LocalAuth falls back to ./.wwebjs_auth.
-  authStrategy: new LocalAuth({ dataPath: process.env.WWEBJS_DATA_PATH }),
+  authStrategy: new LocalAuth({ dataPath }),
   puppeteer: {
     executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
     headless: true,
@@ -33,6 +63,7 @@ export function initClient(): void {
 });
 
   loadAdmins(); // ✅ load admins before initializing
+  clearChromiumSingletonLocks(); // drop stale locks left by a killed container
   client.initialize();
 
   client.on('qr', (qr: string) => {
