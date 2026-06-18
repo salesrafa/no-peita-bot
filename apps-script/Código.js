@@ -96,6 +96,15 @@ function doPost(e) {
     case '/tickets':
       responseText = handleMyTickets(e);
       break;
+    case '/jogos':
+      responseText = handleMatches(e);
+      break;
+    case '/palpite':
+      responseText = handlePrediction(e);
+      break;
+    case '/meuspalpites':
+      responseText = handleMyPredictions(e);
+      break;
     case 'atualizaluacheia':
       responseText = updateFullMoonCache(e);
       break;

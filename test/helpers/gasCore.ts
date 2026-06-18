@@ -11,7 +11,7 @@ import vm from 'node:vm';
  * a small epilogue that captures every top-level `function`/`const` name into an
  * exports object — without touching the production files.
  */
-const CORE_FILES = ['animals', 'identity', 'dates', 'ranking', 'format'];
+const CORE_FILES = ['animals', 'identity', 'dates', 'ranking', 'format', 'bolao'];
 
 function collectNames(src: string): string[] {
   const names = new Set<string>();

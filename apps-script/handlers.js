@@ -813,6 +813,17 @@ function handleHelp() {
   text += `• /ticketstatus ID\n`;
   text += `  Consulta o status de um ticket específico.\n\n`;
 
+  text += `⚽ *Bolão da Copa*\n`;
+  text += `• /jogos\n`;
+  text += `  Lista os jogos de hoje e amanhã com as siglas dos times.\n\n`;
+
+  text += `• /palpite BRAxSUI 2x1\n`;
+  text += `  Registra seu palpite (vale até o início do jogo).\n`;
+  text += `  ⚠️ Os pontos só contam se você treinar no dia do jogo!\n\n`;
+
+  text += `• /meuspalpites\n`;
+  text += `  Lista seus palpites e os pontos de cada um.\n\n`;
+
   text += `❓ *Ajuda*\n`;
   text += `• /ajuda\n`;
   text += `  Mostra esta mensagem.\n\n`;
