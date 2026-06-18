@@ -4,7 +4,7 @@ import { core } from '../helpers/gasCore';
 const {
   parsePrediction, predictionsOpen, formatMatchList, formatKickoffTime,
   parseResult, matchOutcome, scoreBasePoints, applyTrainingMultiplier,
-  sortBolaoRanking, formatBolaoRanking,
+  sortBolaoRanking, formatBolaoRanking, planResultUpdates,
 } = core;
 
 // Helper: a match kicking off at a given local date/time.
@@ -146,5 +146,54 @@ describe('formatBolaoRanking', () => {
     expect(text).toContain('🥇 *Ana* — 10 pts');
     expect(text).toContain('🥈 *Dan* — 8 pts');
     expect(text).toContain('2 placares exatos 🎯');
+  });
+});
+
+describe('planResultUpdates', () => {
+  const ours = [
+    { id: 1, home: 'BRA', away: 'HAI', status: 'agendado' },
+    { id: 2, home: 'SUI', away: 'CAN', status: 'agendado' },
+    { id: 3, home: 'ARG', away: 'AUT', status: 'encerrado' }, // already graded
+  ];
+
+  const apiMatch = (homeTla: string, awayTla: string, h: number, a: number) => ({
+    homeTeam: { tla: homeTla },
+    awayTeam: { tla: awayTla },
+    score: { fullTime: { home: h, away: a } },
+  });
+
+  it('maps a finished match to our row with the score', () => {
+    const { updates, unmatched } = planResultUpdates([apiMatch('BRA', 'HAI', 2, 1)], ours);
+    expect(unmatched).toEqual([]);
+    expect(updates).toHaveLength(1);
+    expect(updates[0].match.id).toBe(1);
+    expect(updates[0].homeGoals).toBe(2);
+    expect(updates[0].awayGoals).toBe(1);
+  });
+
+  it('reorients the score when the API has home/away swapped', () => {
+    // API lists HAI as home; our row has BRA as mandante → goals must flip
+    const { updates } = planResultUpdates([apiMatch('HAI', 'BRA', 1, 2)], ours);
+    expect(updates[0].match.id).toBe(1);
+    expect(updates[0].homeGoals).toBe(2); // BRA (our mandante)
+    expect(updates[0].awayGoals).toBe(1); // HAI
+  });
+
+  it('skips matches already marked encerrado', () => {
+    const { updates, unmatched } = planResultUpdates([apiMatch('ARG', 'AUT', 3, 0)], ours);
+    expect(updates).toEqual([]);
+    expect(unmatched).toHaveLength(1); // no open row to match
+  });
+
+  it('reports unknown pairs as unmatched', () => {
+    const { updates, unmatched } = planResultUpdates([apiMatch('XYZ', 'ABC', 0, 0)], ours);
+    expect(updates).toEqual([]);
+    expect(unmatched).toEqual(['XYZ x ABC (0x0)']);
+  });
+
+  it('ignores API matches without a full-time score', () => {
+    const noScore = { homeTeam: { tla: 'BRA' }, awayTeam: { tla: 'HAI' }, score: { fullTime: { home: null, away: null } } };
+    const { updates } = planResultUpdates([noScore], ours);
+    expect(updates).toEqual([]);
   });
 });

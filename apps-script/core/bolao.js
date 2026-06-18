@@ -140,3 +140,56 @@ function formatBolaoRanking(entries) {
   });
   return text.trim();
 }
+
+// Maps a football-data.org team code (tla) to our sigla. Their tla usually
+// already matches our FIFA-style codes; only the exceptions go here. Fill this
+// in as the sync logs report unmatched games.
+const FOOTBALL_DATA_ALIASES = {
+  // 'API_TLA': 'OUR_SIGLA'
+};
+
+// Normalizes a football-data.org team object to our sigla.
+function apiTlaToSigla(team) {
+  const tla = String((team && team.tla) || "").trim().toUpperCase();
+  return FOOTBALL_DATA_ALIASES[tla] || tla;
+}
+
+// Pure: given finished API matches and our match rows, returns the score
+// updates to apply (already oriented to our mandante/visitante) and the API
+// matches we couldn't map. Skips our matches already "encerrado", matches a
+// pair in either orientation, and never reuses the same match row twice.
+function planResultUpdates(apiMatches, ourMatches) {
+  const updates = [];
+  const unmatched = [];
+  const usedIds = {};
+
+  (apiMatches || []).forEach((am) => {
+    const fullTime = am && am.score && am.score.fullTime;
+    if (!fullTime || fullTime.home == null || fullTime.away == null) return;
+
+    const apiHome = apiTlaToSigla(am.homeTeam);
+    const apiAway = apiTlaToSigla(am.awayTeam);
+
+    const match = ourMatches.find((m) =>
+      !usedIds[m.id] &&
+      String(m.status).trim() !== "encerrado" &&
+      ((m.home === apiHome && m.away === apiAway) ||
+        (m.home === apiAway && m.away === apiHome))
+    );
+
+    if (!match) {
+      unmatched.push(`${apiHome} x ${apiAway} (${fullTime.home}x${fullTime.away})`);
+      return;
+    }
+
+    usedIds[match.id] = true;
+    const sameOrientation = match.home === apiHome;
+    updates.push({
+      match: match,
+      homeGoals: sameOrientation ? fullTime.home : fullTime.away,
+      awayGoals: sameOrientation ? fullTime.away : fullTime.home,
+    });
+  });
+
+  return { updates: updates, unmatched: unmatched };
+}

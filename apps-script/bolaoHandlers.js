@@ -351,3 +351,72 @@ function handleBolaoRanking(_e) {
 
   return formatBolaoRanking(entries);
 }
+
+// ---------------------------------------------------------------------------
+// Automated results sync (football-data.org)
+// ---------------------------------------------------------------------------
+
+// Time-driven entry point: fetches finished World Cup matches and grades any
+// that aren't recorded yet. Idempotent — skips matches already "encerrado", so
+// it's safe to run on a schedule (install a clock trigger via
+// installResultsSyncTrigger). Returns a { updated, unmatched } summary, or null
+// when the token is missing / the API call fails. Manual /resultado still works
+// as an override. Requires Script Property FOOTBALL_DATA_TOKEN.
+function syncResults() {
+  const token = PropertiesService.getScriptProperties().getProperty("FOOTBALL_DATA_TOKEN");
+  if (!token) {
+    Logger.log("syncResults: FOOTBALL_DATA_TOKEN ausente nas Script Properties");
+    return null;
+  }
+
+  const response = UrlFetchApp.fetch(
+    "https://api.football-data.org/v4/competitions/WC/matches?status=FINISHED",
+    { headers: { "X-Auth-Token": token }, muteHttpExceptions: true }
+  );
+  if (response.getResponseCode() !== 200) {
+    Logger.log("syncResults: API " + response.getResponseCode() + " " + response.getContentText().slice(0, 300));
+    return null;
+  }
+
+  const apiMatches = JSON.parse(response.getContentText()).matches || [];
+  const plan = planResultUpdates(apiMatches, readMatches());
+
+  plan.updates.forEach((u) => {
+    recordMatchResult(u.match, u.homeGoals, u.awayGoals);
+    gradePredictions(u.match, { homeGoals: u.homeGoals, awayGoals: u.awayGoals });
+  });
+
+  Logger.log(
+    "syncResults: " + plan.updates.length + " atualizados; não casados: " +
+    (plan.unmatched.join("; ") || "nenhum")
+  );
+  return { updated: plan.updates.length, unmatched: plan.unmatched };
+}
+
+// Run ONCE from the Apps Script editor to schedule syncResults() every 30 min.
+// Removes any previous syncResults trigger first, so it's safe to re-run.
+function installResultsSyncTrigger() {
+  ScriptApp.getProjectTriggers().forEach((t) => {
+    if (t.getHandlerFunction() === "syncResults") ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger("syncResults").timeBased().everyMinutes(30).create();
+}
+
+// /sincronizar (admins only) -> forces a results sync now and reports back.
+// Handy to confirm the token/integration without waiting for the trigger.
+function handleSyncResults(e) {
+  const user = getUserByIdentifier(e.parameter.From || "");
+  if (!user) return MSG_NOT_REGISTERED;
+  if (!isAdmin(user)) return "🔒 Só admins podem sincronizar resultados.";
+
+  const summary = syncResults();
+  if (!summary) {
+    return "⚠️ Não consegui sincronizar (token ausente ou API fora). Confira o FOOTBALL_DATA_TOKEN e os logs.";
+  }
+
+  let msg = `🔄 Sincronizado: ${summary.updated} jogo${summary.updated === 1 ? "" : "s"} apurado${summary.updated === 1 ? "" : "s"}.`;
+  if (summary.unmatched.length) {
+    msg += `\n⚠️ Sem correspondência (lance no /resultado): ${summary.unmatched.join("; ")}`;
+  }
+  return msg;
+}

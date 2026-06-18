@@ -111,6 +111,9 @@ function doPost(e) {
     case '/bolao':
       responseText = handleBolaoRanking(e);
       break;
+    case '/sincronizar':
+      responseText = handleSyncResults(e);
+      break;
     case 'atualizaluacheia':
       responseText = updateFullMoonCache(e);
       break;
