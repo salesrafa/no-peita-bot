@@ -824,6 +824,12 @@ function handleHelp() {
   text += `• /meuspalpites\n`;
   text += `  Lista seus palpites e os pontos de cada um.\n\n`;
 
+  text += `• /bolao\n`;
+  text += `  Ranking do bolão. Placar exato 4 pts, vencedor 2 pts — e *dobra* se você treinou no dia do jogo!\n\n`;
+
+  text += `• /resultado BRAxSUI 2x1 (só admins)\n`;
+  text += `  Lança o placar final e apura os palpites daquele jogo.\n\n`;
+
   text += `❓ *Ajuda*\n`;
   text += `• /ajuda\n`;
   text += `  Mostra esta mensagem.\n\n`;

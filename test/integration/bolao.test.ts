@@ -94,3 +94,104 @@ describe('bolão — /meuspalpites', () => {
     expect(out).toContain('ainda não palpitou');
   });
 });
+
+// Grading scenario: a match played YESTERDAY (so it's gradeable), three
+// predictions, and a workout for Rafa on the match day (he gets the ×2).
+function setupGrading() {
+  const now = new Date();
+  const dayAt = (off: number) => new Date(now.getFullYear(), now.getMonth(), now.getDate() + off);
+  const fmt = (dt: Date) =>
+    `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}/${dt.getFullYear()}`;
+  const yesterday = dayAt(-1);
+  const tomorrow = dayAt(1);
+
+  return loadShell({
+    usuarios: [
+      ['id_whatsapp', 'nome', 'data', 'role', 'numero', 'uuid'],
+      ['admin@c.us', 'Chefe', new Date(), 'admin', '5511000', 'uuid-admin'],
+      ['111@c.us', 'Rafa', new Date(), '', '5511999', 'uuid-rafa'],
+      ['222@c.us', 'Bia', new Date(), '', '5511888', 'uuid-bia'],
+      ['333@c.us', 'Dan', new Date(), '', '5511777', 'uuid-dan'],
+    ],
+    jogos: [
+      ['id', 'fase', 'mandante', 'visitante', 'data', 'hora', 'gols_mandante', 'gols_visitante', 'status'],
+      [1, 'Grupos', 'BRA', 'HAI', fmt(yesterday), '13:00', '', '', 'agendado'],
+      [2, 'Grupos', 'ARG', 'AUT', fmt(tomorrow), '14:00', '', '', 'agendado'],
+    ],
+    palpites: [
+      ['uuid', 'jogo_id', 'gols_mandante', 'gols_visitante', 'data_palpite', 'pontos_base', 'treinou', 'pontos_final'],
+      ['uuid-rafa', 1, 2, 1, fmt(yesterday), '', '', ''], // exact
+      ['uuid-bia', 1, 1, 0, fmt(yesterday), '', '', ''],  // right winner, wrong score
+      ['uuid-dan', 1, 0, 2, fmt(yesterday), '', '', ''],  // wrong winner
+    ],
+    treinos: [
+      ['uuid', 'nome', 'data', 'msgId'],
+      ['uuid-rafa', 'Rafa', yesterday, 'm1'], // only Rafa trained on match day
+    ],
+  });
+}
+
+const ADMIN = 'admin@c.us';
+
+describe('bolão — /resultado (grading)', () => {
+  it('blocks non-admins', () => {
+    const env = setupGrading();
+    const out = env.post({ Body: '/resultado BRAxHAI 2x1', From: FROM });
+    expect(out).toContain('Só admins');
+    // nothing graded
+    expect(env.rowsOf('palpites').every((r) => r[7] === '')).toBe(true);
+  });
+
+  it('refuses a match that has not started yet', () => {
+    const env = setupGrading();
+    const out = env.post({ Body: '/resultado ARGxAUT 1x0', From: ADMIN });
+    expect(out).toContain('ainda não começou');
+  });
+
+  it('records the result and grades with the workout ×2 multiplier', () => {
+    const env = setupGrading();
+    const out = env.post({ Body: '/resultado BRAxHAI 2x1', From: ADMIN });
+    expect(out).toContain('Resultado lançado');
+    expect(out).toContain('3 palpites apurados');
+
+    // jogos row: score + status
+    const match = env.rowsOf('jogos').find((r) => r[0] === 1)!;
+    expect(match[6]).toBe(2);            // gols_mandante
+    expect(match[7]).toBe(1);            // gols_visitante
+    expect(match[8]).toBe('encerrado');  // status
+
+    // palpites: base | treinou | final
+    const byUuid = (u: string) => env.rowsOf('palpites').find((r) => r[0] === u)!;
+    expect(byUuid('uuid-rafa').slice(5, 8)).toEqual([4, 'sim', 8]); // exact + trained → ×2
+    expect(byUuid('uuid-bia').slice(5, 8)).toEqual([2, 'não', 2]);  // winner, no training
+    expect(byUuid('uuid-dan').slice(5, 8)).toEqual([0, 'não', 0]);  // wrong → 0
+  });
+
+  it('re-running corrects the grade', () => {
+    const env = setupGrading();
+    env.post({ Body: '/resultado BRAxHAI 2x1', From: ADMIN });
+    env.post({ Body: '/resultado BRAxHAI 0x0', From: ADMIN }); // correction
+
+    const rafa = env.rowsOf('palpites').find((r) => r[0] === 'uuid-rafa')!;
+    expect(rafa.slice(5, 8)).toEqual([0, 'sim', 0]); // 2x1 is now wrong → 0
+  });
+});
+
+describe('bolão — /bolao (ranking)', () => {
+  it('shows an empty state before any grading', () => {
+    const env = setupGrading();
+    expect(env.post({ Body: '/bolao', From: FROM })).toContain('Nenhum palpite pontuado');
+  });
+
+  it('ranks by final points after grading', () => {
+    const env = setupGrading();
+    env.post({ Body: '/resultado BRAxHAI 2x1', From: ADMIN });
+
+    const out = env.post({ Body: '/bolao', From: FROM });
+    expect(out).toContain('Rafa');
+    expect(out).toContain('🥇 *Rafa* — 8 pts');
+    // ordering: Rafa (8) > Bia (2) > Dan (0)
+    expect(out.indexOf('Rafa')).toBeLessThan(out.indexOf('Bia'));
+    expect(out.indexOf('Bia')).toBeLessThan(out.indexOf('Dan'));
+  });
+});
