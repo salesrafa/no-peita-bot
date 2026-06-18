@@ -85,13 +85,15 @@ const DEFAULT_SEED: Record<string, Rows> = {
   metas: [['uuid', 'ano', 'meta']],
   lua_cheia: [['ano', 'mes', 'data']],
   mensagens: [['numero', 'nome', 'mensagem', 'data', 'comando']],
+  jogos: [['id', 'fase', 'mandante', 'visitante', 'data', 'hora', 'gols_mandante', 'gols_visitante', 'status']],
+  palpites: [['uuid', 'jogo_id', 'gols_mandante', 'gols_visitante', 'data_palpite', 'pontos_base', 'treinou', 'pontos_final']],
 };
 
 const AUTH_TOKEN = 'test-token';
 
 const APP_FILES = [
-  'core/animals', 'core/dates', 'core/identity', 'core/ranking', 'core/format',
-  'comum', 'utils', 'configHandlers', 'handlers', 'Código',
+  'core/animals', 'core/dates', 'core/identity', 'core/ranking', 'core/format', 'core/bolao',
+  'comum', 'utils', 'configHandlers', 'handlers', 'bolaoHandlers', 'Código',
 ];
 
 function pad2(n: number) { return String(n).padStart(2, '0'); }
