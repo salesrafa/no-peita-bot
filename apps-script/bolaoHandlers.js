@@ -421,7 +421,7 @@ function handleSyncResults(e) {
   return msg;
 }
 
-// /bolao-regras -> explains every pool command and the scoring rules. Points
+// /bolao-regras -> explains the player commands and the scoring rules. Points
 // are read from BOLAO_SCORING so this stays in sync if the config changes.
 function handleBolaoRules() {
   const exact = BOLAO_SCORING.EXACT;
@@ -442,11 +442,7 @@ function handleBolaoRules() {
   text += "• /palpite BRAxSUI 2x1\n  Registra seu palpite (vale até o início do jogo; pode atualizar até lá).\n\n";
   text += "• /meuspalpites\n  Seus palpites e os pontos de cada um.\n\n";
   text += "• /bolao\n  Ranking do bolão (desempate por nº de placares exatos).\n\n";
-  text += "• /bolao-regras\n  Mostra esta mensagem.\n\n";
-
-  text += "🔧 *Admin*\n";
-  text += "• /resultado BRAxSUI 2x1\n  Lança o placar final e apura os palpites do jogo.\n";
-  text += "• /sincronizar\n  Busca os placares já encerrados e apura automaticamente.";
+  text += "• /bolao-regras\n  Mostra esta mensagem.";
 
   return text.trim();
 }
