@@ -105,6 +105,12 @@ function doPost(e) {
     case '/meuspalpites':
       responseText = handleMyPredictions(e);
       break;
+    case '/resultado':
+      responseText = handleResult(e);
+      break;
+    case '/bolao':
+      responseText = handleBolaoRanking(e);
+      break;
     case 'atualizaluacheia':
       responseText = updateFullMoonCache(e);
       break;

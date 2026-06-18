@@ -234,3 +234,120 @@ function handleMyPredictions(e) {
   });
   return text.trim();
 }
+
+// Finds the match to grade for a team pair: the most recent one that has
+// already kicked off. Returns the match, the "NOT_STARTED" sentinel when the
+// pair exists but hasn't started, or null when there's no such pair.
+function findPlayedMatch(home, away, now) {
+  const all = readMatches().filter((m) => m.home === home && m.away === away);
+  if (all.length === 0) return null;
+
+  const played = all
+    .filter((m) => m.kickoff.getTime() <= now.getTime())
+    .sort((a, b) => b.kickoff - a.kickoff);
+  return played.length ? played[0] : "NOT_STARTED";
+}
+
+// Writes the final score back to the match row and marks it as finished.
+function recordMatchResult(match, homeGoals, awayGoals) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.MATCHES);
+  sheet.getRange(match.rowIndex, MATCH_COL.HOME_GOALS + 1).setValue(homeGoals);
+  sheet.getRange(match.rowIndex, MATCH_COL.AWAY_GOALS + 1).setValue(awayGoals);
+  sheet.getRange(match.rowIndex, MATCH_COL.STATUS + 1).setValue("encerrado");
+}
+
+// Grades every prediction for a match: base points × the workout multiplier
+// (×2 for whoever trained on match day). Overwrites previous grades, so it's
+// safe to re-run when a score is corrected. Returns how many were graded.
+function gradePredictions(match, result) {
+  const sheet = getPredictionsSheet();
+  const rows = sheet.getDataRange().getValues();
+
+  // who trained on the match day (compared by canonical uuid)
+  const matchDay = formatDate(match.kickoff);
+  const trained = {};
+  readWorkouts().forEach((w) => {
+    if (formatDate(w.date) === matchDay) trained[w.uuid] = true;
+  });
+
+  let graded = 0;
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (String(row[PREDICTION_COL.MATCH_ID]).trim() !== String(match.id).trim()) continue;
+
+    const prediction = {
+      homeGoals: Number(row[PREDICTION_COL.HOME_GOALS]),
+      awayGoals: Number(row[PREDICTION_COL.AWAY_GOALS]),
+    };
+    const uuid = String(row[PREDICTION_COL.UUID]).trim();
+    const base = scoreBasePoints(prediction, result);
+    const didTrain = !!trained[uuid];
+
+    sheet.getRange(i + 1, PREDICTION_COL.BASE_POINTS + 1).setValue(base);
+    sheet.getRange(i + 1, PREDICTION_COL.TRAINED + 1).setValue(didTrain ? "sim" : "não");
+    sheet.getRange(i + 1, PREDICTION_COL.FINAL_POINTS + 1).setValue(applyTrainingMultiplier(base, didTrain));
+    graded++;
+  }
+  return graded;
+}
+
+// /resultado BRAxSUI 2x1 (admins only) -> records the final score and grades
+// every prediction for that match. Safe to re-run to fix a score.
+function handleResult(e) {
+  const user = getUserByIdentifier(e.parameter.From || "");
+  if (!user) return MSG_NOT_REGISTERED;
+  if (!isAdmin(user)) return "🔒 Só admins podem lançar resultados.";
+
+  const result = parseResult(e.parameter.Body);
+  if (!result) {
+    return "❌ Use: /resultado BRAxSUI 2x1\n(sigla do mandante x visitante e o placar final).";
+  }
+
+  const now = new Date();
+  const match = findPlayedMatch(result.home, result.away, now);
+  if (match === "NOT_STARTED") {
+    return `⏳ O jogo *${result.home} x ${result.away}* ainda não começou — não dá pra lançar resultado.`;
+  }
+  if (!match) {
+    return `❌ Não achei o jogo *${result.home} x ${result.away}*. Confira as siglas em /jogos.`;
+  }
+
+  recordMatchResult(match, result.homeGoals, result.awayGoals);
+  const graded = gradePredictions(match, result);
+
+  return (
+    `✅ Resultado lançado: *${match.home} ${result.homeGoals}x${result.awayGoals} ${match.away}*\n` +
+    `📊 ${graded} palpite${graded === 1 ? "" : "s"} apurado${graded === 1 ? "" : "s"} ` +
+    `(×2 para quem treinou em ${formatDate(match.kickoff)}).\n` +
+    "Veja o ranking com /bolao."
+  );
+}
+
+// /bolao -> standings by total final points (graded predictions only).
+function handleBolaoRanking(_e) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.PREDICTIONS);
+  if (!sheet || sheet.getLastRow() <= 1) return formatBolaoRanking([]);
+
+  const nameByUuid = getUuidToNameMap();
+  const totals = {}; // uuid -> { points, exacts }
+
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    const finalPoints = row[PREDICTION_COL.FINAL_POINTS];
+    if (finalPoints === "" || finalPoints == null) continue; // not graded yet
+
+    const uuid = String(row[PREDICTION_COL.UUID]).trim();
+    if (!totals[uuid]) totals[uuid] = { points: 0, exacts: 0 };
+    totals[uuid].points += Number(finalPoints);
+    if (Number(row[PREDICTION_COL.BASE_POINTS]) === BOLAO_SCORING.EXACT) totals[uuid].exacts++;
+  }
+
+  const entries = Object.keys(totals).map((uuid) => ({
+    name: nameByUuid[uuid] || uuid,
+    points: totals[uuid].points,
+    exacts: totals[uuid].exacts,
+  }));
+
+  return formatBolaoRanking(entries);
+}
