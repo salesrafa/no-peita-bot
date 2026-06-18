@@ -184,10 +184,11 @@ describe('bolão — /bolao-regras', () => {
     // scoring (4/8 exact, 2/4 winner) derived from BOLAO_SCORING
     expect(out).toContain('Placar exato: *4 pts* (8');
     expect(out).toContain('*2 pts* (4');
-    // mentions the commands
+    // mentions the player commands, but not the admin ones
     expect(out).toContain('/palpite');
     expect(out).toContain('/bolao');
-    expect(out).toContain('/resultado');
+    expect(out).not.toContain('/resultado');
+    expect(out).not.toContain('/sincronizar');
   });
 });
 
