@@ -830,6 +830,9 @@ function handleHelp() {
   text += `• /resultado BRAxSUI 2x1 (só admins)\n`;
   text += `  Lança o placar final e apura os palpites daquele jogo.\n\n`;
 
+  text += `• /sincronizar (só admins)\n`;
+  text += `  Busca os placares já encerrados e apura automaticamente.\n\n`;
+
   text += `❓ *Ajuda*\n`;
   text += `• /ajuda\n`;
   text += `  Mostra esta mensagem.\n\n`;
