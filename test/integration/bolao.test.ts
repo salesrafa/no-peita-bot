@@ -177,6 +177,20 @@ describe('bolão — /resultado (grading)', () => {
   });
 });
 
+describe('bolão — /bolao-regras', () => {
+  it('lists the commands and the scoring rules', () => {
+    const out = setup().post({ Body: '/bolao-regras', From: FROM });
+    expect(out).toContain('Regras');
+    // scoring (4/8 exact, 2/4 winner) derived from BOLAO_SCORING
+    expect(out).toContain('Placar exato: *4 pts* (8');
+    expect(out).toContain('*2 pts* (4');
+    // mentions the commands
+    expect(out).toContain('/palpite');
+    expect(out).toContain('/bolao');
+    expect(out).toContain('/resultado');
+  });
+});
+
 describe('bolão — /bolao (ranking)', () => {
   it('shows an empty state before any grading', () => {
     const env = setupGrading();
