@@ -4,7 +4,7 @@ import { core } from '../helpers/gasCore';
 const {
   parsePrediction, predictionsOpen, formatMatchList, formatKickoffTime,
   parseResult, matchOutcome, scoreBasePoints, applyTrainingMultiplier,
-  sortBolaoRanking, formatBolaoRanking, planResultUpdates,
+  sortBolaoRanking, formatBolaoRanking, planResultUpdates, teamLabel, flag,
 } = core;
 
 // Helper: a match kicking off at a given local date/time.
@@ -64,14 +64,26 @@ describe('formatMatchList', () => {
 
     expect(text).toContain('Hoje (17/06)');
     expect(text).toContain('Amanhã (18/06)');
-    expect(text).toContain('BRA x SUI — 13:00');
-    expect(text).toContain('POR x GHA — 13:00');
-    expect(text).toContain('/palpite BRAxSUI 2x1'); // first match drives the example
+    expect(text).toContain(`${teamLabel('BRA')} x ${teamLabel('SUI')} — 13:00`);
+    expect(text).toContain(`${teamLabel('POR')} x ${teamLabel('GHA')} — 13:00`);
+    expect(text).toContain('/palpite BRAxSUI 2x1'); // first match drives the example (no flags)
   });
 
   it('marks a match whose kickoff already passed as closed', () => {
     const text = formatMatchList([match('BRA', 'SUI', 2026, 5, 17, 9)], now);
     expect(text).toContain('⛔ fechado');
+  });
+});
+
+describe('teamLabel / flag', () => {
+  it('prefixes a known sigla with its flag', () => {
+    expect(flag('BRA')).not.toBe('');
+    expect(teamLabel('BRA')).toBe(`${flag('BRA')} BRA`);
+  });
+
+  it('falls back to just the sigla for unknown codes', () => {
+    expect(flag('XYZ')).toBe('');
+    expect(teamLabel('XYZ')).toBe('XYZ');
   });
 });
 

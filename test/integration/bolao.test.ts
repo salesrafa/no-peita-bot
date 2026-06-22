@@ -30,7 +30,8 @@ describe('bolão — /jogos', () => {
     const { post } = setup();
     const out = post({ Body: '/jogos', From: FROM });
     expect(out).toContain('Bolão da Copa');
-    expect(out).toContain('BRA x SUI');
+    expect(out).toContain('BRA x'); // sigla + flag rendered (🇧🇷 BRA x 🇨🇭 SUI)
+    expect(out).toContain('SUI');
     expect(out).toContain('Amanhã');
   });
 });
@@ -42,7 +43,8 @@ describe('bolão — /palpite', () => {
   it('registers a prediction and stores one row', () => {
     const out = env.post({ Body: '/palpite BRAxSUI 2x1', From: FROM });
     expect(out).toContain('Palpite registrado');
-    expect(out).toContain('BRA 2x1 SUI');
+    expect(out).toContain('BRA 2x1');
+    expect(out).toContain('SUI');
 
     const rows = env.rowsOf('palpites');
     expect(rows.length).toBe(1);
@@ -84,7 +86,8 @@ describe('bolão — /meuspalpites', () => {
     env.post({ Body: '/palpite BRAxSUI 2x1', From: FROM });
 
     const out = env.post({ Body: '/meuspalpites', From: FROM });
-    expect(out).toContain('BRA 2x1 SUI');
+    expect(out).toContain('BRA 2x1');
+    expect(out).toContain('SUI');
     expect(out).toContain('aguardando');
   });
 
