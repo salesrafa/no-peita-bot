@@ -11,6 +11,32 @@
 // The workout multiplier is applied on top when the person trained on match day.
 const BOLAO_SCORING = { EXACT: 4, WINNER: 2, WRONG: 0, TRAINED_MULTIPLIER: 2 };
 
+// Flag emoji per team sigla (our codes are FIFA 3-letter, so this can't be
+// derived from the sigla — it's a lookup). Unknown codes just render the sigla.
+// England/Scotland use the subdivision tag-flag emojis (rendered fine on WhatsApp).
+const FLAG_BY_SIGLA = {
+  ALG: "🇩🇿", ARG: "🇦🇷", AUS: "🇦🇺", AUT: "🇦🇹", BEL: "🇧🇪", BIH: "🇧🇦",
+  BRA: "🇧🇷", CAN: "🇨🇦", CIV: "🇨🇮", CMR: "🇨🇲", COD: "🇨🇩", COL: "🇨🇴",
+  CPV: "🇨🇻", CRC: "🇨🇷", CRO: "🇭🇷", CUW: "🇨🇼", CZE: "🇨🇿", ECU: "🇪🇨",
+  EGY: "🇪🇬", ENG: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", ESP: "🇪🇸", FRA: "🇫🇷", GER: "🇩🇪", GHA: "🇬🇭",
+  HAI: "🇭🇹", HON: "🇭🇳", IRN: "🇮🇷", IRQ: "🇮🇶", JAM: "🇯🇲", JOR: "🇯🇴",
+  JPN: "🇯🇵", KOR: "🇰🇷", KSA: "🇸🇦", MAR: "🇲🇦", MEX: "🇲🇽", NED: "🇳🇱",
+  NGA: "🇳🇬", NOR: "🇳🇴", NZL: "🇳🇿", PAN: "🇵🇦", PAR: "🇵🇾", POR: "🇵🇹",
+  QAT: "🇶🇦", RSA: "🇿🇦", SCO: "🏴󠁧󠁢󠁳󠁣󠁴󠁿", SEN: "🇸🇳", SUI: "🇨🇭", SWE: "🇸🇪",
+  TUN: "🇹🇳", TUR: "🇹🇷", URU: "🇺🇾", USA: "🇺🇸", UZB: "🇺🇿",
+};
+
+// Flag emoji for a sigla, or "" when we don't have one.
+function flag(sigla) {
+  return FLAG_BY_SIGLA[String(sigla || "").toUpperCase()] || "";
+}
+
+// "🇧🇷 BRA" for a known team, or just "BRA" when there's no flag.
+function teamLabel(sigla) {
+  const emoji = flag(sigla);
+  return emoji ? `${emoji} ${sigla}` : String(sigla);
+}
+
 // Parses a "/<command> BRAxSUI 2x1" body into { home, away, homeGoals, awayGoals }.
 // Tolerates optional spaces and x/X/× as the team separator, and x/X/×/:/- in
 // the score. Teams are upper-cased. Returns null when it doesn't match.
@@ -90,7 +116,7 @@ function formatMatchList(matches, now) {
 
   const line = (match) => {
     const closed = predictionsOpen(match, now) ? "" : "  ⛔ fechado";
-    return `• ${match.home} x ${match.away} — ${formatKickoffTime(match.kickoff)}${closed}`;
+    return `• ${teamLabel(match.home)} x ${teamLabel(match.away)} — ${formatKickoffTime(match.kickoff)}${closed}`;
   };
 
   const todays = matches.filter((m) => formatDate(m.kickoff) === today);

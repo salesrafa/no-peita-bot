@@ -179,7 +179,7 @@ function handlePrediction(e) {
     return `❌ Não achei o jogo *${prediction.home} x ${prediction.away}*. Confira as siglas em /jogos.`;
   }
   if (!predictionsOpen(match, now)) {
-    return `⏰ Os palpites de *${match.home} x ${match.away}* já fecharam (a bola já rolou).`;
+    return `⏰ Os palpites de *${teamLabel(match.home)} x ${teamLabel(match.away)}* já fecharam (a bola já rolou).`;
   }
 
   upsertPrediction(
@@ -188,7 +188,7 @@ function handlePrediction(e) {
   );
 
   return (
-    `✅ Palpite registrado: *${match.home} ${prediction.homeGoals}x${prediction.awayGoals} ${match.away}*\n` +
+    `✅ Palpite registrado: *${teamLabel(match.home)} ${prediction.homeGoals}x${prediction.awayGoals} ${teamLabel(match.away)}*\n` +
     `⏰ Vale até ${formatKickoffTime(match.kickoff)} de ${formatDate(match.kickoff)}.`
   );
 }
@@ -227,7 +227,7 @@ function handleMyPredictions(e) {
 
   let text = `🔮 *Seus palpites (${mine.length}):*\n`;
   mine.forEach((p) => {
-    const score = `${p.match.home} ${p.homeGoals}x${p.awayGoals} ${p.match.away}`;
+    const score = `${teamLabel(p.match.home)} ${p.homeGoals}x${p.awayGoals} ${teamLabel(p.match.away)}`;
     const graded = p.finalPoints !== "" && p.finalPoints != null;
     const status = graded ? `✅ ${p.finalPoints} pts` : "⏳ aguardando";
     text += `• ${score} — ${status}\n`;
@@ -316,7 +316,7 @@ function handleResult(e) {
   const graded = gradePredictions(match, result);
 
   return (
-    `✅ Resultado lançado: *${match.home} ${result.homeGoals}x${result.awayGoals} ${match.away}*\n` +
+    `✅ Resultado lançado: *${teamLabel(match.home)} ${result.homeGoals}x${result.awayGoals} ${teamLabel(match.away)}*\n` +
     `📊 ${graded} palpite${graded === 1 ? "" : "s"} apurado${graded === 1 ? "" : "s"} ` +
     `(×2 para quem treinou em ${formatDate(match.kickoff)}).\n` +
     "Veja o ranking com /bolao."
