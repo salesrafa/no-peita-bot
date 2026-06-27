@@ -356,12 +356,31 @@ function handleBolaoRanking(_e) {
 // Automated results sync (football-data.org)
 // ---------------------------------------------------------------------------
 
-// Time-driven entry point: fetches finished World Cup matches and grades any
-// that aren't recorded yet. Idempotent — skips matches already "encerrado", so
-// it's safe to run on a schedule (install a clock trigger via
-// installResultsSyncTrigger). Returns a { updated, unmatched } summary, or null
-// when the token is missing / the API call fails. Manual /resultado still works
-// as an override. Requires Script Property FOOTBALL_DATA_TOKEN.
+// Re-grades recently-finished matches using the scores already in "jogos".
+// Grading freezes the workout ×2 at the first apuração, so a workout logged
+// later on the match day would otherwise never count. Re-running the grade
+// picks it up. Limited to the last couple of days to stay cheap; older fixes
+// can be redone with /resultado. Returns how many matches were re-graded.
+function regradeRecentMatches(now) {
+  const cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).getTime();
+  let count = 0;
+  readMatches().forEach((m) => {
+    if (String(m.status).trim() !== "encerrado") return;
+    if (m.kickoff.getTime() < cutoff) return;
+    if (m.homeGoals === "" || m.homeGoals == null || m.awayGoals === "" || m.awayGoals == null) return;
+    gradePredictions(m, { homeGoals: Number(m.homeGoals), awayGoals: Number(m.awayGoals) });
+    count++;
+  });
+  return count;
+}
+
+// Time-driven entry point: fetches finished World Cup matches, grades the new
+// ones, and re-grades recent ones so late-logged workouts still earn the ×2.
+// Safe to run on a schedule (install a clock trigger via
+// installResultsSyncTrigger). Returns a { updated, regraded, unmatched }
+// summary, or null when the token is missing / the API call fails. Manual
+// /resultado still works as an override. Requires Script Property
+// FOOTBALL_DATA_TOKEN.
 function syncResults() {
   const token = PropertiesService.getScriptProperties().getProperty("FOOTBALL_DATA_TOKEN");
   if (!token) {
@@ -386,11 +405,15 @@ function syncResults() {
     gradePredictions(u.match, { homeGoals: u.homeGoals, awayGoals: u.awayGoals });
   });
 
+  // Re-grade recent matches too, so a workout logged after the first apuração
+  // (but still on the match day) earns the ×2 without a manual /resultado.
+  const regraded = regradeRecentMatches(new Date());
+
   Logger.log(
-    "syncResults: " + plan.updates.length + " atualizados; não casados: " +
-    (plan.unmatched.join("; ") || "nenhum")
+    "syncResults: " + plan.updates.length + " novos; " + regraded +
+    " reconferidos; não casados: " + (plan.unmatched.join("; ") || "nenhum")
   );
-  return { updated: plan.updates.length, unmatched: plan.unmatched };
+  return { updated: plan.updates.length, regraded: regraded, unmatched: plan.unmatched };
 }
 
 // Run ONCE from the Apps Script editor to schedule syncResults() every 30 min.
@@ -414,7 +437,8 @@ function handleSyncResults(e) {
     return "⚠️ Não consegui sincronizar (token ausente ou API fora). Confira o FOOTBALL_DATA_TOKEN e os logs.";
   }
 
-  let msg = `🔄 Sincronizado: ${summary.updated} jogo${summary.updated === 1 ? "" : "s"} apurado${summary.updated === 1 ? "" : "s"}.`;
+  let msg = `🔄 Sincronizado: ${summary.updated} novo${summary.updated === 1 ? "" : "s"} apurado${summary.updated === 1 ? "" : "s"}` +
+    `, ${summary.regraded} reconferido${summary.regraded === 1 ? "" : "s"}.`;
   if (summary.unmatched.length) {
     msg += `\n⚠️ Sem correspondência (lance no /resultado): ${summary.unmatched.join("; ")}`;
   }
