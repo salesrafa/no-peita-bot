@@ -117,6 +117,9 @@ function doPost(e) {
     case '/sincronizar':
       responseText = handleSyncResults(e);
       break;
+    case '/reapurar':
+      responseText = handleRegradeAll(e);
+      break;
     case 'atualizaluacheia':
       responseText = updateFullMoonCache(e);
       break;

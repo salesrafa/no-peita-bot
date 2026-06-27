@@ -356,22 +356,34 @@ function handleBolaoRanking(_e) {
 // Automated results sync (football-data.org)
 // ---------------------------------------------------------------------------
 
-// Re-grades recently-finished matches using the scores already in "jogos".
-// Grading freezes the workout ×2 at the first apuração, so a workout logged
-// later on the match day would otherwise never count. Re-running the grade
-// picks it up. Limited to the last couple of days to stay cheap; older fixes
-// can be redone with /resultado. Returns how many matches were re-graded.
-function regradeRecentMatches(now) {
-  const cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).getTime();
+// Re-grades the finished matches selected by `shouldInclude`, using the scores
+// already in "jogos" and the current workouts. Grading freezes the workout ×2
+// at the first apuração, so a workout logged later on the match day would
+// otherwise never count — re-running the grade picks it up. Returns how many
+// matches were re-graded.
+function regradeMatches(shouldInclude) {
   let count = 0;
   readMatches().forEach((m) => {
     if (String(m.status).trim() !== "encerrado") return;
-    if (m.kickoff.getTime() < cutoff) return;
     if (m.homeGoals === "" || m.homeGoals == null || m.awayGoals === "" || m.awayGoals == null) return;
+    if (!shouldInclude(m)) return;
     gradePredictions(m, { homeGoals: Number(m.homeGoals), awayGoals: Number(m.awayGoals) });
     count++;
   });
   return count;
+}
+
+// Re-grades only matches finished in the last couple of days — cheap, runs on
+// every sync so same-day late workouts earn the ×2 without intervention.
+function regradeRecentMatches(now) {
+  const cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).getTime();
+  return regradeMatches((m) => m.kickoff.getTime() >= cutoff);
+}
+
+// Re-grades every finished match (no date window). Used by /reapurar for a
+// full recompute, e.g. after backdated workouts or a scoring change.
+function regradeAllMatches() {
+  return regradeMatches(function () { return true; });
 }
 
 // Time-driven entry point: fetches finished World Cup matches, grades the new
@@ -443,6 +455,17 @@ function handleSyncResults(e) {
     msg += `\n⚠️ Sem correspondência (lance no /resultado): ${summary.unmatched.join("; ")}`;
   }
   return msg;
+}
+
+// /reapurar (admins only) -> re-grades every finished match from the scores
+// already in "jogos". Useful after backdated workouts or a scoring change.
+function handleRegradeAll(e) {
+  const user = getUserByIdentifier(e.parameter.From || "");
+  if (!user) return MSG_NOT_REGISTERED;
+  if (!isAdmin(user)) return "🔒 Só admins podem reapurar.";
+
+  const count = regradeAllMatches();
+  return `🔁 Reapurados ${count} jogo${count === 1 ? "" : "s"}. Veja o ranking com /bolao.`;
 }
 
 // /bolao-regras -> explains the player commands and the scoring rules. Points

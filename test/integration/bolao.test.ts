@@ -265,4 +265,27 @@ describe('bolão — regradeRecentMatches', () => {
     const p2 = env.rowsOf('palpites').find((r) => r[1] === 2)!;
     expect(p2.slice(5, 8)).toEqual([4, 'não', 4]); // 5 days old → not re-graded
   });
+
+  it('/reapurar (admin) re-grades every match, including old ones', () => {
+    const env = setupRegrade();
+    env.post({ Body: '/cadastro Chefe', From: 'admin@c.us' });
+    // make the user above an admin
+    const usersSheet = env.ss.getSheetByName('usuarios')!;
+    usersSheet.getRange(usersSheet.getLastRow(), 4).setValue('admin'); // col D = role
+
+    const out = env.post({ Body: '/reapurar', From: 'admin@c.us' });
+    expect(out).toContain('Reapurados 2 jogos');
+
+    // even the 5-day-old match now reflects the training ×2
+    const p2 = env.rowsOf('palpites').find((r) => r[1] === 2)!;
+    expect(p2.slice(5, 8)).toEqual([4, 'sim', 8]);
+  });
+
+  it('/reapurar is blocked for non-admins', () => {
+    const env = setupRegrade();
+    const out = env.post({ Body: '/reapurar', From: FROM });
+    expect(out).toContain('Só admins');
+    // nothing re-graded
+    expect(env.rowsOf('palpites').find((r) => r[1] === 1)![7]).toBe(4);
+  });
 });

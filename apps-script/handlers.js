@@ -836,6 +836,9 @@ function handleHelp() {
   text += `• /sincronizar (só admins)\n`;
   text += `  Busca os placares já encerrados e apura automaticamente.\n\n`;
 
+  text += `• /reapurar (só admins)\n`;
+  text += `  Reapura TODOS os jogos encerrados (recalcula os pontos do zero).\n\n`;
+
   text += `❓ *Ajuda*\n`;
   text += `• /ajuda\n`;
   text += `  Mostra esta mensagem.\n\n`;
