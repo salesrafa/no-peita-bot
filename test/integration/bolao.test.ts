@@ -213,3 +213,56 @@ describe('bolão — /bolao (ranking)', () => {
     expect(out.indexOf('Bia')).toBeLessThan(out.indexOf('Dan'));
   });
 });
+
+// Re-grade picks up a workout logged AFTER the first apuração (the ×2 was
+// otherwise frozen). A finished match is seeded as graded-without-training
+// (base 4 / final 4); after the workout exists, regrade must turn it into 8.
+describe('bolão — regradeRecentMatches', () => {
+  const pad = (n: number) => String(n).padStart(2, '0');
+
+  function setupRegrade() {
+    const now = new Date();
+    const dayAt = (off: number) => new Date(now.getFullYear(), now.getMonth(), now.getDate() + off);
+    const fmt = (dt: Date) => `${pad(dt.getDate())}/${pad(dt.getMonth() + 1)}/${dt.getFullYear()}`;
+    const yesterday = dayAt(-1);
+    const old = dayAt(-5);
+
+    return loadShell({
+      usuarios: [
+        ['id_whatsapp', 'nome', 'data', 'role', 'numero', 'uuid'],
+        ['111@c.us', 'Rafa', new Date(), '', '5511999', 'uuid-rafa'],
+      ],
+      jogos: [
+        ['id', 'fase', 'mandante', 'visitante', 'data', 'hora', 'gols_mandante', 'gols_visitante', 'status'],
+        [1, 'Grupos', 'BRA', 'HAI', fmt(yesterday), '13:00', 2, 1, 'encerrado'],
+        [2, 'Grupos', 'ARG', 'AUT', fmt(old), '16:00', 3, 0, 'encerrado'], // outside the window
+      ],
+      palpites: [
+        ['uuid', 'jogo_id', 'gols_mandante', 'gols_visitante', 'data_palpite', 'pontos_base', 'treinou', 'pontos_final'],
+        ['uuid-rafa', 1, 2, 1, fmt(yesterday), 4, 'não', 4], // exact, frozen without training
+        ['uuid-rafa', 2, 3, 0, fmt(old), 4, 'não', 4],
+      ],
+      treinos: [
+        ['uuid', 'nome', 'data', 'msgId'],
+        ['uuid-rafa', 'Rafa', yesterday, 'm1'], // trained on the recent match's day
+        ['uuid-rafa', 'Rafa', old, 'm2'],       // and on the old one's day
+      ],
+    });
+  }
+
+  it('applies the ×2 to a recent match once the workout exists', () => {
+    const env = setupRegrade();
+    env.app.regradeRecentMatches(new Date());
+
+    const p1 = env.rowsOf('palpites').find((r) => r[1] === 1)!;
+    expect(p1.slice(5, 8)).toEqual([4, 'sim', 8]); // re-graded with training
+  });
+
+  it('leaves matches outside the recent window untouched', () => {
+    const env = setupRegrade();
+    env.app.regradeRecentMatches(new Date());
+
+    const p2 = env.rowsOf('palpites').find((r) => r[1] === 2)!;
+    expect(p2.slice(5, 8)).toEqual([4, 'não', 4]); // 5 days old → not re-graded
+  });
+});
