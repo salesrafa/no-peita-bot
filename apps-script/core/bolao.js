@@ -219,3 +219,39 @@ function planResultUpdates(apiMatches, ourMatches) {
 
   return { updates: updates, unmatched: unmatched };
 }
+
+// Human-readable (pt-BR) label for a football-data.org knockout stage code.
+function stageLabelPtBr(stage) {
+  const labels = {
+    LAST_32: "16-avos",
+    ROUND_OF_32: "16-avos",
+    LAST_16: "Oitavas",
+    ROUND_OF_16: "Oitavas",
+    QUARTER_FINALS: "Quartas",
+    QUARTER_FINAL: "Quartas",
+    SEMI_FINALS: "Semifinal",
+    SEMI_FINAL: "Semifinal",
+    THIRD_PLACE: "3º lugar",
+    FINAL: "Final",
+  };
+  return labels[stage] || String(stage || "Mata-mata");
+}
+
+// Pure: picks the knockout fixtures to add to "jogos". Returns one entry per API
+// match that (a) isn't a group game — those are entered manually, (b) has BOTH
+// teams defined (knockout pairings are TBD until the bracket fills), (c) has a
+// kickoff, and (d) isn't already in the sheet (by id). The shell formats the
+// kickoff into date/time and appends the row.
+function planFixtureImports(apiMatches, existingIds) {
+  const out = [];
+  (apiMatches || []).forEach((am) => {
+    if (!am || am.stage === "GROUP_STAGE") return;
+    const home = apiTlaToSigla(am.homeTeam);
+    const away = apiTlaToSigla(am.awayTeam);
+    if (!home || !away) return;          // matchup not defined yet
+    if (!am.utcDate) return;
+    if (existingIds[String(am.id)]) return; // already imported
+    out.push({ apiId: am.id, fase: stageLabelPtBr(am.stage), home: home, away: away, utcDate: am.utcDate });
+  });
+  return out;
+}

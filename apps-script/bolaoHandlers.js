@@ -386,19 +386,66 @@ function regradeAllMatches() {
   return regradeMatches(function () { return true; });
 }
 
-// Time-driven entry point: fetches finished World Cup matches, grades the new
-// ones, and re-grades recent ones so late-logged workouts still earn the ×2.
-// Safe to run on a schedule (install a clock trigger via
-// installResultsSyncTrigger). Returns a { updated, regraded, unmatched }
-// summary, or null when the token is missing / the API call fails. Manual
-// /resultado still works as an override. Requires Script Property
-// FOOTBALL_DATA_TOKEN.
+// Imports knockout fixtures into "jogos" as their matchups get defined: fetches
+// the full World Cup schedule and appends every knockout match that has both
+// teams known and isn't in the sheet yet (group games stay manual). Kickoff is
+// converted to the script's timezone. Returns how many were added (0 on a
+// missing token / API failure). Requires Script Property FOOTBALL_DATA_TOKEN.
+function importFixtures() {
+  const token = PropertiesService.getScriptProperties().getProperty("FOOTBALL_DATA_TOKEN");
+  if (!token) {
+    Logger.log("importFixtures: FOOTBALL_DATA_TOKEN ausente nas Script Properties");
+    return 0;
+  }
+
+  const response = UrlFetchApp.fetch(
+    "https://api.football-data.org/v4/competitions/WC/matches",
+    { headers: { "X-Auth-Token": token }, muteHttpExceptions: true }
+  );
+  if (response.getResponseCode() !== 200) {
+    Logger.log("importFixtures: API " + response.getResponseCode() + " " + response.getContentText().slice(0, 300));
+    return 0;
+  }
+
+  const apiMatches = JSON.parse(response.getContentText()).matches || [];
+  const existingIds = {};
+  readMatches().forEach((m) => { existingIds[String(m.id)] = true; });
+
+  const toImport = planFixtureImports(apiMatches, existingIds);
+  if (toImport.length === 0) return 0;
+
+  const sheet = getMatchesSheet();
+  const tz = Session.getScriptTimeZone();
+  toImport.forEach((f) => {
+    const kickoff = new Date(f.utcDate);
+    sheet.appendRow([
+      f.apiId, f.fase, f.home, f.away,
+      Utilities.formatDate(kickoff, tz, "dd/MM/yyyy"),
+      Utilities.formatDate(kickoff, tz, "HH:mm"),
+      "", "", "agendado",
+    ]);
+  });
+
+  Logger.log("importFixtures: " + toImport.length + " jogos importados");
+  return toImport.length;
+}
+
+// Time-driven entry point: imports newly-defined knockout fixtures, fetches
+// finished World Cup matches, grades the new ones, and re-grades recent ones so
+// late-logged workouts still earn the ×2. Safe to run on a schedule (install a
+// clock trigger via installResultsSyncTrigger). Returns an
+// { imported, updated, regraded, unmatched } summary, or null when the token is
+// missing / the results call fails. Manual /resultado still works as an
+// override. Requires Script Property FOOTBALL_DATA_TOKEN.
 function syncResults() {
   const token = PropertiesService.getScriptProperties().getProperty("FOOTBALL_DATA_TOKEN");
   if (!token) {
     Logger.log("syncResults: FOOTBALL_DATA_TOKEN ausente nas Script Properties");
     return null;
   }
+
+  // Pull in knockout fixtures as the bracket fills, so people can palpitar them.
+  const imported = importFixtures();
 
   const response = UrlFetchApp.fetch(
     "https://api.football-data.org/v4/competitions/WC/matches?status=FINISHED",
@@ -422,10 +469,10 @@ function syncResults() {
   const regraded = regradeRecentMatches(new Date());
 
   Logger.log(
-    "syncResults: " + plan.updates.length + " novos; " + regraded +
-    " reconferidos; não casados: " + (plan.unmatched.join("; ") || "nenhum")
+    "syncResults: " + imported + " importados; " + plan.updates.length + " novos; " +
+    regraded + " reconferidos; não casados: " + (plan.unmatched.join("; ") || "nenhum")
   );
-  return { updated: plan.updates.length, regraded: regraded, unmatched: plan.unmatched };
+  return { imported: imported, updated: plan.updates.length, regraded: regraded, unmatched: plan.unmatched };
 }
 
 // Run ONCE from the Apps Script editor to schedule syncResults() every 30 min.
@@ -449,12 +496,27 @@ function handleSyncResults(e) {
     return "⚠️ Não consegui sincronizar (token ausente ou API fora). Confira o FOOTBALL_DATA_TOKEN e os logs.";
   }
 
-  let msg = `🔄 Sincronizado: ${summary.updated} novo${summary.updated === 1 ? "" : "s"} apurado${summary.updated === 1 ? "" : "s"}` +
+  let msg = `🔄 Sincronizado: ${summary.imported} novo${summary.imported === 1 ? "" : "s"} na tabela` +
+    `, ${summary.updated} apurado${summary.updated === 1 ? "" : "s"}` +
     `, ${summary.regraded} reconferido${summary.regraded === 1 ? "" : "s"}.`;
   if (summary.unmatched.length) {
     msg += `\n⚠️ Sem correspondência (lance no /resultado): ${summary.unmatched.join("; ")}`;
   }
   return msg;
+}
+
+// /importarjogos (admins only) -> pulls in any knockout fixtures whose matchup
+// is already defined, without waiting for the scheduled sync.
+function handleImportFixtures(e) {
+  const user = getUserByIdentifier(e.parameter.From || "");
+  if (!user) return MSG_NOT_REGISTERED;
+  if (!isAdmin(user)) return "🔒 Só admins podem importar jogos.";
+
+  const count = importFixtures();
+  if (count === 0) {
+    return "📥 Nenhum jogo novo pra importar (confrontos ainda indefinidos, ou confira o token/logs).";
+  }
+  return `📥 ${count} jogo${count === 1 ? "" : "s"} importado${count === 1 ? "" : "s"} pra tabela. Veja com /jogos.`;
 }
 
 // /reapurar (admins only) -> re-grades every finished match from the scores

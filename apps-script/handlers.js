@@ -839,6 +839,9 @@ function handleHelp() {
   text += `• /reapurar (só admins)\n`;
   text += `  Reapura TODOS os jogos encerrados (recalcula os pontos do zero).\n\n`;
 
+  text += `• /importarjogos (só admins)\n`;
+  text += `  Importa os jogos do mata-mata já definidos pra tabela.\n\n`;
+
   text += `❓ *Ajuda*\n`;
   text += `• /ajuda\n`;
   text += `  Mostra esta mensagem.\n\n`;
