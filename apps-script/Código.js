@@ -120,6 +120,9 @@ function doPost(e) {
     case '/reapurar':
       responseText = handleRegradeAll(e);
       break;
+    case '/importarjogos':
+      responseText = handleImportFixtures(e);
+      break;
     case 'atualizaluacheia':
       responseText = updateFullMoonCache(e);
       break;

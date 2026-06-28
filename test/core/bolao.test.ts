@@ -5,6 +5,7 @@ const {
   parsePrediction, predictionsOpen, formatMatchList, formatKickoffTime,
   parseResult, matchOutcome, scoreBasePoints, applyTrainingMultiplier,
   sortBolaoRanking, formatBolaoRanking, planResultUpdates, teamLabel, flag,
+  planFixtureImports, stageLabelPtBr,
 } = core;
 
 // Helper: a match kicking off at a given local date/time.
@@ -207,5 +208,46 @@ describe('planResultUpdates', () => {
     const noScore = { homeTeam: { tla: 'BRA' }, awayTeam: { tla: 'HAI' }, score: { fullTime: { home: null, away: null } } };
     const { updates } = planResultUpdates([noScore], ours);
     expect(updates).toEqual([]);
+  });
+});
+
+describe('stageLabelPtBr', () => {
+  it('maps known knockout stages and falls back to the raw code', () => {
+    expect(stageLabelPtBr('LAST_16')).toBe('Oitavas');
+    expect(stageLabelPtBr('QUARTER_FINALS')).toBe('Quartas');
+    expect(stageLabelPtBr('FINAL')).toBe('Final');
+    expect(stageLabelPtBr('WHATEVER')).toBe('WHATEVER');
+  });
+});
+
+describe('planFixtureImports', () => {
+  const ko = (id: number, stage: string, home: string | null, away: string | null, utcDate: string | null) => ({
+    id,
+    stage,
+    utcDate,
+    homeTeam: home ? { tla: home } : { tla: null },
+    awayTeam: away ? { tla: away } : { tla: null },
+  });
+
+  it('imports a defined knockout match that is not in the sheet yet', () => {
+    const out = planFixtureImports([ko(900, 'LAST_16', 'BRA', 'POR', '2026-07-01T20:00:00Z')], {});
+    expect(out).toEqual([
+      { apiId: 900, fase: 'Oitavas', home: 'BRA', away: 'POR', utcDate: '2026-07-01T20:00:00Z' },
+    ]);
+  });
+
+  it('skips group games (those are entered manually)', () => {
+    const out = planFixtureImports([ko(1, 'GROUP_STAGE', 'BRA', 'SUI', '2026-06-18T16:00:00Z')], {});
+    expect(out).toEqual([]);
+  });
+
+  it('skips matches whose teams are still TBD', () => {
+    const out = planFixtureImports([ko(901, 'QUARTER_FINALS', null, null, '2026-07-05T20:00:00Z')], {});
+    expect(out).toEqual([]);
+  });
+
+  it('skips matches already present in the sheet (by id)', () => {
+    const out = planFixtureImports([ko(900, 'LAST_16', 'BRA', 'POR', '2026-07-01T20:00:00Z')], { '900': true });
+    expect(out).toEqual([]);
   });
 });
