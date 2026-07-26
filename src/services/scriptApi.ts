@@ -26,7 +26,9 @@ export async function handleMessage(msg: Message, client: Client): Promise<void>
       }
     }
 
-    const response = await axios.post(url, params, { headers: header });
+    // timeout so a network stall fails fast (and the user gets the error
+    // reply) instead of hanging forever — the default is no timeout.
+    const response = await axios.post(url, params, { headers: header, timeout: 20000 });
 
     (client as any).sendSeen = async () => {};
 
