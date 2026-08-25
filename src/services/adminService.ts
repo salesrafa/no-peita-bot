@@ -6,7 +6,8 @@ let adminSet = new Set<string>();
 export async function loadAdmins(): Promise<void> {
   try {
     const { data } = await axios.get(
-      `${url}?action=getAdmins&token=${encodeURIComponent(scriptAuthToken)}`
+      `${url}?action=getAdmins&token=${encodeURIComponent(scriptAuthToken)}`,
+      { timeout: 20000 }
     );
     adminSet = new Set(data.map((u: any) => String(u.number)));
     console.log(`✅ Admins loaded: ${[...adminSet].join(', ')}`);

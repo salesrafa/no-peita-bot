@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import QRCode from 'qrcode';
 import { Client, LocalAuth, Message } from 'whatsapp-web.js';
 import { environment, allowedContacts } from '../config';
 import { handleMessage } from './scriptApi';
@@ -67,15 +68,20 @@ export function initClient(): void {
   client.initialize();
 
   client.on('qr', (qr: string) => {
-    if (environment === 'prod') {
-      lastQr = qr;
-    } else {
-      console.log('🟡 QR RECEIVED:\n', qr);
-    }
+    lastQr = qr; // still served by /qr when the public domain is enabled
+    // Also render the QR to the logs so it can be scanned straight from Railway,
+    // without exposing a public /qr endpoint.
+    console.log('🟡 QR pendente — escaneie (WhatsApp > Aparelhos conectados):');
+    QRCode.toString(qr, { type: 'terminal', small: true })
+      .then((ascii) => console.log(ascii))
+      .catch((err) => console.error('Erro ao renderizar QR no log:', err));
   });
 
   client.on('authenticated', () => console.log('🟢 AUTHENTICATED'));
   client.on('auth_failure', msg => console.error('🔴 AUTH FAILURE:', msg));
+  client.on('disconnected', (reason) =>
+    console.error('🔴 WhatsApp DISCONNECTED:', reason, '— aguardando novo QR nos logs.')
+  );
 
   client.on('message', async (msg: Message) => {
     if (!shouldHandleMessage(msg.body, msg.from, environment, allowedContacts)) return;
@@ -91,4 +97,17 @@ export function initClient(): void {
 
 export function getLastQr(): string {
   return lastQr;
+}
+
+// Closes the WhatsApp client cleanly so LocalAuth flushes the session to the
+// volume before the process exits. Called on SIGTERM/SIGINT (Railway sends
+// SIGTERM before killing on deploy) to avoid corrupting the saved session,
+// which would otherwise force a fresh QR scan on the next boot.
+export async function shutdownClient(): Promise<void> {
+  try {
+    await client.destroy();
+    console.log('👋 WhatsApp client destroyed cleanly.');
+  } catch (err) {
+    console.error('Error destroying WhatsApp client:', err);
+  }
 }
