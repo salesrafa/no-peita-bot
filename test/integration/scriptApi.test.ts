@@ -25,8 +25,9 @@ describe('handleMessage', () => {
   });
 
   it('forwards Body/From/MsgId and replies with the Apps Script response', async () => {
+    const msg = fakeMsg();
     const client: any = { sendMessage: vi.fn() };
-    await handleMessage(fakeMsg(), client);
+    await handleMessage(msg, client);
 
     expect(post).toHaveBeenCalledTimes(1);
     const params = post.mock.calls[0][1] as URLSearchParams;
@@ -35,7 +36,24 @@ describe('handleMessage', () => {
     expect(params.get('MsgId')).toBe('MSG-1');
     expect(params.get('QuotedMsgId')).toBeNull();
 
-    expect(client.sendMessage).toHaveBeenCalledWith('111@c.us', '✅ Treino registrado com sucesso!');
+    // delivered via msg.reply (reliable), not client.sendMessage(msg.from)
+    expect(msg.reply).toHaveBeenCalledWith('✅ Treino registrado com sucesso!');
+  });
+
+  it('does not report a processing error when the command succeeded but delivery fails', async () => {
+    // The exact reported bug: /pontuar saved the workout (post resolved) but the
+    // reply throws — the user must NOT get "Ocorreu um erro" (they'd retry and
+    // duplicate the workout).
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const msg = fakeMsg({ reply: vi.fn().mockRejectedValue(new Error('send failed')) });
+    const client: any = { sendMessage: vi.fn() };
+    await handleMessage(msg, client);
+
+    expect(msg.reply).toHaveBeenCalledTimes(1);
+    expect(msg.reply).toHaveBeenCalledWith('✅ Treino registrado com sucesso!');
+    expect(msg.reply).not.toHaveBeenCalledWith('⚠️ Ocorreu um erro ao processar seu comando.');
+
+    errSpy.mockRestore();
   });
 
   it('forwards QuotedMsgId when the message is a reply', async () => {
