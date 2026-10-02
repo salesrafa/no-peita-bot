@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('axios', () => ({ default: { post: vi.fn() } }));
 import axios from 'axios';
-import { handleMessage } from '../../src/services/scriptApi';
+import { handleMessage, postToBackend } from '../../src/services/scriptApi';
 
 const post = axios.post as unknown as ReturnType<typeof vi.fn>;
 
@@ -80,5 +80,45 @@ describe('handleMessage', () => {
     expect(errSpy).toHaveBeenCalled();
 
     errSpy.mockRestore();
+  });
+});
+
+describe('postToBackend (retry on 404 only)', () => {
+  const params = new URLSearchParams();
+
+  beforeEach(() => {
+    post.mockReset();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  it('retries a transient 404 and then succeeds', async () => {
+    post.mockRejectedValueOnce({ response: { status: 404 } });
+    post.mockResolvedValueOnce({ data: 'ok' });
+
+    const res = await postToBackend(params, 3, 0);
+
+    expect(res).toEqual({ data: 'ok' });
+    expect(post).toHaveBeenCalledTimes(2);
+  });
+
+  it('gives up after the max attempts on a persistent 404', async () => {
+    post.mockRejectedValue({ response: { status: 404 } });
+
+    await expect(postToBackend(params, 3, 0)).rejects.toMatchObject({ response: { status: 404 } });
+    expect(post).toHaveBeenCalledTimes(3);
+  });
+
+  it('does NOT retry a timeout (it may have executed — avoids duplicates)', async () => {
+    post.mockRejectedValue({ code: 'ETIMEDOUT', message: 'timeout of 20000ms exceeded' });
+
+    await expect(postToBackend(params, 3, 0)).rejects.toMatchObject({ code: 'ETIMEDOUT' });
+    expect(post).toHaveBeenCalledTimes(1);
+  });
+
+  it('does NOT retry non-404 HTTP errors', async () => {
+    post.mockRejectedValue({ response: { status: 500 } });
+
+    await expect(postToBackend(params, 3, 0)).rejects.toMatchObject({ response: { status: 500 } });
+    expect(post).toHaveBeenCalledTimes(1);
   });
 });

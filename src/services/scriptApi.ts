@@ -1,6 +1,29 @@
-import axios from 'axios';
+import axios, { AxiosResponse } from 'axios';
 import { Client, Message } from 'whatsapp-web.js';
 import { url, header, scriptAuthToken } from '../config';
+
+// POSTs the command to the Apps Script backend, retrying ONLY on a transient
+// 404. Apps Script's /exec sometimes returns 404 without ever running doPost,
+// so retrying that is safe — nothing executed, no duplicate side effects.
+// Timeouts and other errors are NOT retried: the request may already have run
+// on the backend, and a blind retry could execute the command twice (e.g. a
+// second /ticket). Each attempt keeps the 20s per-request timeout.
+export async function postToBackend(
+  params: URLSearchParams,
+  attempts = 3,
+  delayMs = 600,
+): Promise<AxiosResponse> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await axios.post(url, params, { headers: header, timeout: 20000 });
+    } catch (err) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status !== 404 || attempt >= attempts) throw err;
+      console.warn(`Apps Script returned 404 (attempt ${attempt}/${attempts}); retrying...`);
+      await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));
+    }
+  }
+}
 
 export async function handleMessage(msg: Message, client: Client): Promise<void> {
   let responseData: string;
@@ -30,9 +53,8 @@ export async function handleMessage(msg: Message, client: Client): Promise<void>
       }
     }
 
-    // timeout so a network stall fails fast (and the user gets the error
-    // reply) instead of hanging forever — the default is no timeout.
-    const response = await axios.post(url, params, { headers: header, timeout: 20000 });
+    // Retries only a transient 404 (never a timeout) — see postToBackend.
+    const response = await postToBackend(params);
     responseData = response.data;
   } catch (err) {
     console.error('Error handling message (backend call failed):', err);
