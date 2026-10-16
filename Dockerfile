@@ -23,7 +23,8 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-COPY package*.json ./
+# .npmrc must be present before installing (legacy-peer-deps — see the file).
+COPY package*.json .npmrc ./
 RUN npm install
 COPY . .
 
