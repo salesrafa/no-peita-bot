@@ -397,6 +397,7 @@ function logMessage(e, command) {
 
   const name = getUserName(identifier);
 
+  const startedAt = Date.now();
   messagesSheet.appendRow([
     identifier,
     name ? name : 'Não Cadastrado',
@@ -404,6 +405,8 @@ function logMessage(e, command) {
     Utilities.formatDate(timestamp, Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm:ss"),
     command
   ]);
+  const appendMs = Date.now() - startedAt;
+  perfRecord('mensagens.appendRow', messagesSheet.getLastRow(), appendMs);
 }
 
 function handleRegister(e) {

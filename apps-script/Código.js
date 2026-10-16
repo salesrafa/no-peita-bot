@@ -27,16 +27,20 @@ function doGet(e) {
 }
 
 function doPost(e) {
+  const t0 = Date.now();
+  perfReset();
   if (!isAuthorized(e)) {
     return ContentService.createTextOutput('unauthorized');
   }
+  const tAuth = Date.now();
 
   let responseText;
   const message = (e.parameter.Body || "").trim();
   const parts = message.split(" ");
-  const command = parts[0].toLowerCase(); // a primeira palavra da mensagem
+  const command = parts[0].toLowerCase(); // first word of the message
 
   logMessage(e, command);
+  const tLog = Date.now();
 
   switch (command) {
     case '/cadastro':
@@ -129,6 +133,15 @@ function doPost(e) {
     default:
       responseText = `Ação não encontrada\n\n${handleHelp()}`;
   }
+
+  const tEnd = Date.now();
+  logPerf(command, {
+    authMs: tAuth - t0,
+    logMessageMs: tLog - tAuth,
+    handlerMs: tEnd - tLog,
+    totalMs: tEnd - t0,
+  });
+
   return ContentService
     .createTextOutput(responseText)
     .setMimeType(ContentService.MimeType.XML);

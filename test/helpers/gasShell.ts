@@ -102,8 +102,13 @@ export function loadShell(seed: Record<string, Rows> = {}) {
   const ss = new FakeSpreadsheet({ ...DEFAULT_SEED, ...seed });
   let uuidCounter = 0;
 
+  // Captures the app's console.log (e.g. the per-request perf line) so tests
+  // can assert on it without polluting the test output; errors/warnings still
+  // go to the real console.
+  const logs: string[] = [];
+
   const ctx: any = {
-    console,
+    console: { ...console, log: (...args: unknown[]) => { logs.push(args.map(String).join(' ')); } },
     SpreadsheetApp: { getActiveSpreadsheet: () => ss },
     Session: { getScriptTimeZone: () => 'America/Sao_Paulo' },
     PropertiesService: {
@@ -158,5 +163,10 @@ export function loadShell(seed: Record<string, Rows> = {}) {
     return (ss.getSheetByName(sheet)?.rows ?? []).slice(1);
   }
 
-  return { app, ss, post, rowsOf, AUTH_TOKEN };
+  /** Parsed perf lines logged by doPost (one per authorized request). */
+  function perfLogs(): any[] {
+    return logs.filter((l) => l.startsWith('{"perf":true')).map((l) => JSON.parse(l));
+  }
+
+  return { app, ss, post, rowsOf, AUTH_TOKEN, logs, perfLogs };
 }
