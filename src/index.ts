@@ -33,10 +33,25 @@ app.listen(PORT, () => {
 });
 
 // Shut the WhatsApp client down cleanly on deploy/stop so the session is
-// flushed to the volume (Railway sends SIGTERM before killing the container).
+// flushed to the volume. Railway sends SIGTERM and then SIGKILL after
+// RAILWAY_DEPLOYMENT_DRAINING_SECONDS (default 0!) — that variable must be set
+// above SHUTDOWN_TIMEOUT_MS so this has time to finish.
+const SHUTDOWN_TIMEOUT_MS = 15000;
+let shuttingDown = false;
+
 async function shutdown(signal: string): Promise<void> {
+  if (shuttingDown) return;
+  shuttingDown = true;
   console.log(`↩️ Received ${signal}, shutting down...`);
+
+  // Exit on our own before the platform's SIGKILL if destroy() ever hangs.
+  const forceExit = setTimeout(() => {
+    console.error('⏱️ Shutdown timed out; exiting anyway.');
+    process.exit(1);
+  }, SHUTDOWN_TIMEOUT_MS);
+
   await shutdownClient();
+  clearTimeout(forceExit);
   process.exit(0);
 }
 process.on('SIGTERM', () => { void shutdown('SIGTERM'); });
