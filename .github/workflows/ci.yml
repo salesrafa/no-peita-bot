@@ -38,8 +38,9 @@ jobs:
         with:
           node-version: "20"
 
-      # package-lock.json is gitignored, so we use `npm install`; the tests
-      # never launch a browser, so skip the Chromium download.
+      # package-lock.json is gitignored, so we use `npm install` (it picks up
+      # .npmrc's legacy-peer-deps, which avoids an npm resolver crash); the
+      # tests never launch a browser, so skip the Chromium download.
       - name: Install dependencies
         run: npm install
         env:
