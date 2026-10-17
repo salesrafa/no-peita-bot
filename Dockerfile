@@ -1,6 +1,6 @@
 FROM --platform=linux/amd64 node:20-slim
 
-# System dependencies for Chromium, plus tini to run as PID 1: it forwards
+# System dependencies for Chromium, plus tini as the init process: it forwards
 # SIGTERM to node and reaps Chromium's child processes.
 RUN apt-get update && apt-get install -y \
     chromium \
@@ -40,5 +40,7 @@ EXPOSE 3000
 # (npm -> sh -> node) the SIGTERM sent on deploy never reached node, so the
 # graceful WhatsApp shutdown never ran and Chromium was killed mid-write,
 # which can corrupt the session saved on the volume.
-ENTRYPOINT ["/usr/bin/tini", "--"]
+# -s: Railway runs its own init as PID 1, so tini must register as a child
+# subreaper to adopt (and reap) orphaned Chromium processes.
+ENTRYPOINT ["/usr/bin/tini", "-s", "--"]
 CMD ["node", "dist/index.js"]
