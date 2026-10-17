@@ -112,7 +112,9 @@ function generateRankingForPeriod(startDate, endDate, filtroDataFn) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
 
   const abSheet = ss.getSheetByName(SHEETS.WORKOUTS_AB);
+  const abStartedAt = Date.now();
   const abRows = abSheet ? abSheet.getDataRange().getValues() : [];
+  perfRecord('treinos-AB', abRows.length, Date.now() - abStartedAt);
 
   const maps = getIdentityMaps();
   const uuidParaNome = getUuidToNameMap();
@@ -174,7 +176,9 @@ function getUserByIdentifier(identifier) {
   const sheet = ss.getSheetByName(SHEETS.USERS);
   if (!sheet) return null;
 
+  const startedAt = Date.now();
   const rows = sheet.getDataRange().getValues();
+  perfRecord('getUserByIdentifier', rows.length, Date.now() - startedAt);
 
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
@@ -219,7 +223,9 @@ function getIdentityMaps() {
   const byName = {}; // name -> uuid (fallback for treinos-AB and legacy rows)
   if (!sheet) return { byKey, byName };
 
+  const startedAt = Date.now();
   const rows = sheet.getDataRange().getValues();
+  perfRecord('getIdentityMaps', rows.length, Date.now() - startedAt);
   for (let i = 1; i < rows.length; i++) {
     const id = String(rows[i][USER_COL.ID] || "").trim();
     const name = String(rows[i][USER_COL.NAME] || "").trim();
@@ -240,7 +246,9 @@ function getUuidToNameMap() {
   const sheet = ss.getSheetByName(SHEETS.USERS);
   const map = {};
   if (!sheet) return map;
+  const startedAt = Date.now();
   const rows = sheet.getDataRange().getValues();
+  perfRecord('getUuidToNameMap', rows.length, Date.now() - startedAt);
   for (let i = 1; i < rows.length; i++) {
     const name = String(rows[i][USER_COL.NAME] || "").trim();
     const uuid = String(rows[i][USER_COL.UUID] || "").trim();
@@ -259,7 +267,9 @@ function readWorkouts(maps) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.WORKOUTS);
   if (!sheet) return [];
   maps = maps || getIdentityMaps();
+  const startedAt = Date.now();
   const rows = sheet.getDataRange().getValues();
+  perfRecord('readWorkouts', rows.length, Date.now() - startedAt);
   const workouts = [];
   for (let i = 1; i < rows.length; i++) {
     const col0 = rows[i][WORKOUT_COL.UUID];

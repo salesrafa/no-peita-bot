@@ -34,3 +34,38 @@ const MSG_NOT_REGISTERED = "🚫 Você ainda não está cadastrado. Use: /cadast
 function isAdmin(user) {
   return !!user && String(user.role || "").toLowerCase() === "admin";
 }
+
+// ---------------------------------------------------------------------------
+// Perf instrumentation (diagnostic, no behavior change). Each Apps Script
+// execution starts with fresh globals, so PERF is per-request: doPost resets it
+// and logs it once at the end via logPerf. Used to find out whether doPost is
+// slow because the sheets are big (time grows with row count) or because the
+// same sheet is read too many times per request (high call counts).
+// ---------------------------------------------------------------------------
+const PERF = { calls: {}, rows: {}, ms: {} };
+
+function perfReset() {
+  PERF.calls = {};
+  PERF.rows = {};
+  PERF.ms = {};
+}
+
+// Records one spreadsheet operation: how many times it ran in this request,
+// the sheet's row count and the milliseconds it took.
+function perfRecord(label, rowCount, ms) {
+  PERF.calls[label] = (PERF.calls[label] || 0) + 1;
+  PERF.rows[label] = rowCount;
+  PERF.ms[label] = (PERF.ms[label] || 0) + ms;
+}
+
+// One JSON line per request — visible in Apps Script > Execuções (open a row).
+function logPerf(command, stages) {
+  console.log(JSON.stringify({
+    perf: true,
+    cmd: command,
+    stages: stages,
+    calls: PERF.calls,
+    rows: PERF.rows,
+    ms: PERF.ms,
+  }));
+}
