@@ -1,0 +1,10 @@
+# Keep the build context to what the image needs. Without this, a local
+# `docker build` would copy the host's node_modules (macOS binaries) and dist
+# over the ones built inside the image, and could bake a local .env into it.
+node_modules
+dist
+coverage
+.git
+.env
+.wwebjs_auth
+.wwebjs_cache

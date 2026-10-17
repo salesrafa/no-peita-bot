@@ -1,6 +1,7 @@
 FROM --platform=linux/amd64 node:20-slim
 
-# Instalar dependências do sistema para Chromium
+# System dependencies for Chromium, plus tini to run as PID 1: it forwards
+# SIGTERM to node and reaps Chromium's child processes.
 RUN apt-get update && apt-get install -y \
     chromium \
     fonts-liberation \
@@ -18,6 +19,7 @@ RUN apt-get update && apt-get install -y \
     libxdamage1 \
     libxrandr2 \
     xdg-utils \
+    tini \
     --no-install-recommends \
  && rm -rf /var/lib/apt/lists/*
 
@@ -27,8 +29,16 @@ WORKDIR /app
 COPY package*.json .npmrc ./
 RUN npm install
 COPY . .
+# Compile at build time so the container can start node directly (see CMD).
+RUN npm run build
 
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 EXPOSE 3000
-CMD ["npm", "start"]
+
+# Start node directly under tini instead of `npm start`. With `npm start`
+# (npm -> sh -> node) the SIGTERM sent on deploy never reached node, so the
+# graceful WhatsApp shutdown never ran and Chromium was killed mid-write,
+# which can corrupt the session saved on the volume.
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["node", "dist/index.js"]
